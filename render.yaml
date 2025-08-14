@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: cineselect-manager-online
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT

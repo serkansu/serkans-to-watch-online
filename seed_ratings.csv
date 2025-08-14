@@ -1,0 +1,522 @@
+imdb_id,title,year,imdb_rating,rt
+tt0114746,12 Monkeys,1995,8.0,88
+tt8579674,1917,2019,8.2,88
+tt0268978,A Beautiful Mind,2001,8.2,74
+tt0109040,Ace Ventura: Pet Detective,1994,6.9,48
+tt0078748,Alien,1979,8.5,93
+tt0090605,Aliens,1986,8.4,94
+tt0103644,Alien³,1992,6.4,44
+tt0118583,Alien: Resurrection,1997,6.2,55
+tt0118607,Amistad,1997,7.3,78
+tt2870648,Amy,2015,7.8,96
+tt17009710,Anatomy of a Fall,2023,7.6,96
+tt2543164,Arrival,2016,7.9,94
+tt0499549,Avatar,2009,7.9,81
+tt21261712,Back to Black,2024,6.3,35
+tt0088763,Back to the Future,1985,8.5,93
+tt0096874,Back to the Future Part II,1989,7.8,64
+tt0099088,Back to the Future Part III,1990,7.5,79
+tt0103772,Basic Instinct,1992,7.1,56
+tt0061237,Birdman,1967,6.7,
+tt0265086,Black Hawk Down,2001,7.7,76
+tt1856101,Blade Runner 2049,2017,8.0,88
+tt1727824,Bohemian Rhapsody,2018,7.9,60
+tt11127680,Boiling Point,2021,7.5,99
+tt0112573,Braveheart,1995,8.3,76
+tt0317219,Cars,2006,7.3,74
+tt0162222,Cast Away,2000,7.8,88
+tt0264464,Catch Me If You Can,2002,8.1,96
+tt10366460,CODA,2021,8.0,94
+tt1853728,Django Unchained,2012,8.5,87
+tt5013056,Dunkirk,2017,7.8,92
+tt0083866,E.T. the Extra-Terrestrial,1982,7.9,99
+tt0092965,Empire of the Sun,1987,7.7,77
+tt0470752,Ex Machina,2014,7.7,92
+tt0137523,Fight Club,1999,8.8,81
+tt0113071,First Knight,1995,6.0,45
+tt0109830,Forrest Gump,1994,8.8,75
+tt0099653,Ghost,1990,7.1,74
+tt0172495,Gladiator,2000,8.5,80
+tt0099685,Goodfellas,1990,8.7,94
+tt1454468,Gravity,2013,7.7,96
+tt1028532,Hachi: A Dog's Tale,2009,8.1,64
+tt0113277,Heat,1995,8.3,84
+tt1798709,Her,2013,8.0,95
+tt0099785,Home Alone,1990,7.7,66
+tt0104431,Home Alone 2: Lost in New York,1992,6.9,35
+tt1375666,Inception,2010,8.8,87
+tt0361748,Inglourious Basterds,2009,8.4,89
+tt0816692,Interstellar,2014,8.7,73
+tt1220719,Ip Man,2008,8.0,86
+tt0102138,JFK,1991,8.0,84
+tt0113497,Jumanji,1995,7.1,52
+tt2283362,Jumanji: Welcome to the Jungle,2017,7.0,77
+tt7975244,Jumanji: The Next Level,2019,6.6,72
+tt0107290,Jurassic Park,1993,8.2,91
+tt0119567,The Lost World: Jurassic Park,1997,6.6,56
+tt0163025,Jurassic Park III,2001,6.0,49
+tt0266697,Kill Bill: Vol. 1,2003,8.2,85
+tt0378194,Kill Bill: Vol. 2,2004,8.0,84
+tt0177876,K-911,1999,5.7,17
+tt0104714,Lethal Weapon 3,1992,6.7,60
+tt0454876,Life of Pi,2012,7.9,86
+tt0399295,Lord of War,2005,7.6,62
+tt1392190,Mad Max: Fury Road,2015,8.1,97
+tt0180826,Metallica: Cunning Stunts,1998,8.3,
+tt0480827,Michael Jackson Live in Bucharest: The Dangerous Tour,1992,9.0,
+tt0117060,Mission: Impossible,1996,7.2,65
+tt0120755,Mission: Impossible II,2000,6.1,
+tt0317919,Mission: Impossible III,2006,6.9,73
+tt1229238,Mission: Impossible - Ghost Protocol,2011,7.4,94
+tt2381249,Mission: Impossible - Rogue Nation,2015,7.4,94
+tt4912910,Mission: Impossible - Fallout,2018,7.7,98
+tt1210166,Moneyball,2011,7.6,94
+tt0107614,Mrs. Doubtfire,1993,7.1,71
+tt0477348,No Country for Old Men,2007,8.2,93
+tt15398776,Oppenheimer,2023,8.3,93
+tt6751668,Parasite,2019,8.5,99
+tt0091763,Platoon,1986,8.1,89
+tt0100405,Pretty Woman,1990,7.1,65
+tt0054215,Psycho,1960,8.5,97
+tt0110912,Pulp Fiction,1994,8.8,92
+tt0180093,Requiem for a Dream,2000,8.3,78
+tt0120815,Saving Private Ryan,1998,8.6,94
+tt0108052,Schindler's List,1993,9.0,98
+tt0114369,Se7en,1995,8.6,84
+tt0286106,Signs,2002,6.8,76
+tt0111257,Speed,1994,7.3,95
+tt0076759,Star Wars: Episode IV - A New Hope,1977,8.6,94
+tt0080684,Star Wars: Episode V - The Empire Strikes Back,1980,8.7,93
+tt0086190,Star Wars: Episode VI - Return of the Jedi,1983,8.3,84
+tt3263904,Sully,2016,7.4,85
+tt0098439,Tango & Cash,1989,6.4,31
+tt1596363,The Big Short,2015,7.8,89
+tt0421715,The Curious Case of Benjamin Button,2008,7.8,72
+tt0468569,The Dark Knight,2008,9.0,94
+tt0407887,The Departed,2006,8.5,91
+tt0118971,The Devil's Advocate,1997,7.5,63
+tt10272386,The Father,2020,8.2,98
+tt0119174,The Game,1997,7.7,77
+tt0068646,The Godfather,1972,9.2,97
+tt0071562,The Godfather Part II,1974,9.0,96
+tt0099674,The Godfather Part III,1990,7.6,66
+tt2278388,The Grand Budapest Hotel,2014,8.1,92
+tt0120689,The Green Mile,1999,8.6,79
+tt2084970,The Imitation Game,2014,8.0,90
+tt0087538,The Karate Kid,1984,7.3,81
+tt0110357,The Lion King,1994,8.5,93
+tt0120737,The Lord of the Rings: The Fellowship of the Ring,2001,8.9,92
+tt0167261,The Lord of the Rings: The Two Towers,2002,8.8,95
+tt0167260,The Lord of the Rings: The Return of the King,2003,9.0,94
+tt3659388,The Martian,2015,8.0,91
+tt0133093,The Matrix,1999,8.7,83
+tt0234215,The Matrix Reloaded,2003,7.2,74
+tt0242653,The Matrix Revolutions,2003,6.7,33
+tt0113957,The Net,1995,6.0,44
+tt3402138,The Naked Gun,2025,,
+tt0482571,The Prestige,2006,8.5,77
+tt0454921,The Pursuit of Happyness,2006,8.0,67
+tt1663202,The Revenant,2015,8.0,78
+tt0117500,The Rock,1996,7.4,67
+tt0111161,The Shawshank Redemption,1994,9.3,89
+tt1285016,The Social Network,2010,7.8,96
+tt2980516,The Theory of Everything,2014,7.7,81
+tt0120863,The Thin Red Line,1998,7.6,80
+tt1509767,The Three Musketeers,2011,5.7,27
+tt0120382,The Truman Show,1998,8.2,94
+tt0993846,The Wolf of Wall Street,2013,8.2,79
+tt0120338,Titanic,1997,7.9,88
+tt0092099,Top Gun,1986,7.0,59
+tt1745960,Top Gun: Maverick,2022,8.2,96
+tt0114709,Toy Story,1995,8.3,100
+tt0120363,Toy Story 2,1999,7.9,100
+tt0435761,Toy Story 3,2010,8.3,98
+tt1979376,Toy Story 4,2019,7.6,96
+tt0111503,True Lies,1994,7.3,70
+tt0096320,Twins,1988,6.2,42
+tt1049413,Up,2009,8.3,98
+tt2582802,Whiplash,2014,8.5,94
+tt0443706,Zodiac,2007,7.7,90
+tt0090390,ALF,1986,7.4,
+tt9253284,Andor,2022,8.6,
+tt0417299,Avatar: The Last Airbender,2005,9.3,
+tt0185906,Band of Brothers,2001,9.4,
+tt3032476,Better Call Saul,2015,9.0,
+tt0086960,Beverly Hills Cop,1984,7.4,82
+tt2085059,Black Mirror,2011,8.7,
+tt0903747,Breaking Bad,2008,9.5,96
+tt7366338,Chernobyl,2019,9.3,
+tt5753856,Dark,2017,8.7,
+tt0077000,Dallas,1978,7.1,
+tt0773262,Dexter,2006,8.6,
+tt0116282,Fargo,1996,8.1,95
+tt0108778,Friends,1994,8.9,
+tt0944947,Game of Thrones,2011,9.2,
+tt10160804,Hawkeye,2021,7.5,
+tt3596174,Henry Danger,2014,6.2,
+tt1796960,Homeland,2011,8.3,
+tt11198330,House of the Dragon,2022,8.3,
+tt0460649,How I Met Your Mother,2005,8.3,
+tt3205802,How to Get Away with Murder,2014,8.1,
+tt0083437,Knight Rider,1982,6.9,
+tt0096635,Life Goes On,1989,7.2,
+tt9140554,Loki,2021,8.2,
+tt0411008,Lost,2004,8.3,80
+tt0088559,MacGyver,1985,7.6,
+tt27478132,Making of: The Last of Us,2023,,
+tt0430357,Miami Vice,2006,6.1,47
+tt0096657,Mr. Bean,1990,8.6,
+tt10857164,Ms. Marvel,2022,6.2,
+tt10234724,Moon Knight,2022,7.3,
+tt2707408,Narcos,2015,8.7,
+tt3596176,"Nicky, Ricky, Dicky & Dawn",2014,5.5,
+tt8466564,Obi-Wan Kenobi,2022,7.0,
+tt5071412,Ozark,2017,8.4,
+tt2442560,Peaky Blinders,2013,8.7,
+tt0455275,Prison Break,2005,8.3,
+tt11280740,Severance,2022,8.7,
+tt10857160,She-Hulk: Attorney at Law,2022,5.2,
+tt0279600,Smallville,2001,7.5,
+tt0121955,South Park,1997,8.7,
+tt10919420,Squid Game,2021,8.0,
+tt0092455,Star Trek: The Next Generation,1987,8.7,
+tt4574334,Stranger Things,2016,8.6,
+tt10986410,Ted Lasso,2020,8.8,
+tt0429493,The A-Team,2010,6.7,48
+tt14452776,The Bear,2022,8.5,
+tt0898266,The Big Bang Theory,2007,8.1,
+tt13668894,The Book of Boba Fett,2021,7.1,
+tt1190634,The Boys,2019,8.6,
+tt4786824,The Crown,2016,8.6,
+tt0088526,The Golden Girls,1985,8.2,
+tt5834204,The Handmaid's Tale,2017,8.3,
+tt3581920,The Last of Us,2023,8.5,
+tt8111088,The Mandalorian,2019,8.6,
+tt7203552,The Morning Show,2019,8.1,
+tt1751634,The Sandman,2022,7.7,
+tt0096697,The Simpsons,1989,8.6,85
+tt5952634,The Spy,2019,7.9,
+tt5180504,The Witcher,2019,7.9,
+tt0106179,The X-Files,1993,8.6,
+tt13443470,Wednesday,2022,8.0,
+tt0475784,Westworld,2016,8.4,
+tt4319314,Nine 1/2 Weeks: An Erotic XXX Parody,2014,,
+tt0110413,Léon: The Professional,1994,8.5,75
+tt21867434,BlackBerry,2023,7.3,97
+tt0104291,Forever Young,1992,6.4,54
+tt0088763,Back to the Future,1985,8.5,93
+tt0079116,Escape from Alcatraz,1979,7.6,97
+tt1951261,The Hangover Part III,2013,5.8,21
+tt1130884,Shutter Island,2010,8.2,69
+tt0094226,The Untouchables,1987,7.8,83
+tt1877832,X-Men: Days of Future Past,2014,7.9,90
+tt0266425,Conspiracy,2001,7.6,100
+tt0075148,Rocky,1976,8.1,93
+tt0079817,Rocky II,1979,7.3,70
+tt0083944,First Blood,1982,7.7,86
+tt0084602,Rocky III,1982,6.9,65
+tt0089927,Rocky IV,1985,6.9,39
+tt0246578,Donnie Darko,2001,8.0,88
+tt1121931,Crank: High Voltage,2009,6.1,64
+tt0099423,Die Hard 2,1990,7.1,69
+tt0472043,Apocalypto,2006,7.8,65
+tt0119528,Liar Liar,1997,6.9,83
+tt0399201,The Island,2005,6.8,
+tt0096874,Back to the Future Part II,1989,7.8,64
+tt0387564,Saw,2004,7.6,50
+tt1119646,The Hangover,2009,7.7,79
+tt0080684,Star Wars: Episode V - The Empire Strikes Back,1980,8.7,93
+tt0078346,Superman,1978,7.4,88
+tt0230600,The Others,2001,7.6,84
+tt0479884,Crank,2006,6.9,62
+tt0099088,Back to the Future Part III,1990,7.5,79
+tt0187393,The Patriot,2000,7.2,62
+tt1187043,3 Idiots,2009,8.4,100
+tt0382932,Ratatouille,2007,8.1,96
+tt2397535,Predestination,2014,7.4,84
+tt0955308,Robin Hood,2010,6.6,43
+tt0120784,Payback,1999,7.1,56
+tt0111282,Stargate,1994,7.0,54
+tt0088247,The Terminator,1984,8.1,100
+tt0325980,Pirates of the Caribbean: The Curse of the Black Pearl,2003,8.1,79
+tt0068646,The Godfather,1972,9.2,97
+tt0266697,Kill Bill: Vol. 1,2003,8.2,85
+tt2872732,Lucy,2014,6.4,67
+tt0096895,Batman,1989,7.5,77
+tt0372784,Batman Begins,2005,8.2,85
+tt0102926,The Silence of the Lambs,1991,8.6,95
+tt0096754,The Abyss,1989,7.5,89
+tt0086879,Amadeus,1984,8.4,90
+tt3450958,War for the Planet of the Apes,2017,7.4,94
+tt1655441,The Age of Adaline,2015,7.2,55
+tt0107290,Jurassic Park,1993,8.2,91
+tt0078748,Alien,1979,8.5,93
+tt0120611,Blade,1998,7.1,59
+tt0338013,Eternal Sunshine of the Spotless Mind,2004,8.3,92
+tt0095953,Rain Man,1988,8.0,88
+tt0050083,12 Angry Men,1957,9.0,100
+tt0378194,Kill Bill: Vol. 2,2004,8.0,84
+tt0207201,What Women Want,2000,6.5,54
+tt0293662,The Transporter,2002,6.8,54
+tt0253474,The Pianist,2002,8.5,95
+tt0108052,Schindler's List,1993,9.0,98
+tt0060196,"The Good, the Bad and the Ugly",1966,8.8,97
+tt1411697,The Hangover Part II,2011,6.5,34
+tt0258000,Panic Room,2002,6.8,76
+tt0361862,The Machinist,2004,7.6,77
+tt7286456,Joker,2019,8.3,68
+tt1606378,A Good Day to Die Hard,2013,5.2,15
+tt1816012,The World at War: The Making of the Series.,1989,7.5,
+tt1345836,The Dark Knight Rises,2012,8.4,87
+tt5208252,Operation Finale,2018,6.6,60
+tt0105236,Reservoir Dogs,1992,8.3,90
+tt1219289,Limitless,2011,7.4,68
+tt0106977,The Fugitive,1993,7.8,96
+tt0095016,Die Hard,1988,8.2,94
+tt0120201,Starship Troopers,1997,7.3,72
+tt0073195,Jaws,1975,8.1,97
+tt0383574,Pirates of the Caribbean: Dead Man's Chest,2006,7.4,53
+tt1430122,The Curious Birth of Benjamin Button,2009,7.7,
+tt0133093,The Matrix,1999,8.7,83
+tt0325710,The Last Samurai,2003,7.8,66
+tt1318514,Rise of the Planet of the Apes,2011,7.6,82
+tt0103855,The Bodyguard,1992,6.4,38
+tt0062622,2001: A Space Odyssey,1968,8.3,90
+tt0118799,Life Is Beautiful,1997,8.6,81
+tt0480249,I Am Legend,2007,7.2,68
+tt0332452,Troy,2004,7.3,53
+tt0052618,Ben-Hur,1959,8.1,87
+tt1392170,The Hunger Games,2012,7.2,84
+tt0120586,American History X,1998,8.5,84
+tt0092099,Top Gun,1986,7.0,59
+tt0167404,The Sixth Sense,1999,8.2,86
+tt0434409,V for Vendetta,2005,8.1,73
+tt0209144,Memento,2000,8.4,94
+tt0082971,Raiders of the Lost Ark,1981,8.4,94
+tt0215750,Enemy at the Gates,2001,7.5,54
+tt0100802,Total Recall,1990,7.5,82
+tt0118883,Conspiracy Theory,1997,6.7,57
+tt0408790,Flightplan,2005,6.3,37
+tt17526714,The Substance,2024,7.2,89
+tt0388482,Transporter 2,2005,6.3,
+tt0059578,For a Few Dollars More,1965,8.2,92
+tt0093409,Lethal Weapon,1987,7.6,81
+tt1979320,Rush,2013,8.1,89
+tt0212985,Hannibal,2001,6.8,39
+tt0120660,Enemy of the State,1998,7.3,71
+tt0317705,The Incredibles,2004,8.0,
+tt0066999,Dirty Harry,1971,7.7,89
+tt0115798,The Cable Guy,1996,6.1,56
+tt0103064,Terminator 2: Judgment Day,1991,8.6,91
+tt0181852,Terminator 3: Rise of the Machines,2003,6.3,70
+tt0296310,The Blue Planet,2001,9.0,0
+tt0818086,Back to the Future (Part II): Behind-the-Scenes Special Presentation,1989,7.2,0
+tt0438488,Terminator Salvation,2009,6.5,33
+tt6450804,Terminator: Dark Fate,2019,6.2,70
+tt1340138,Terminator Genisys,2015,6.3,26
+tt18412256,Alien: Romulus,2024,7.1,80
+tt35882130,"Alien, Terror in Space",2025,0.0,0
+tt1446714,Prometheus,2012,7.0,73
+tt2316204,Alien: Covenant,2017,6.4,65
+tt0343818,"I, Robot",2004,7.1,0
+tt0083658,Blade Runner,1982,8.1,89
+tt21028848,Ip Man: The Awakening,2021,4.7,0
+tt12567246,Ip Man: Kung Fu Master,2019,4.6,40
+tt2888046,Ip Man 3,2015,7.0,77
+tt2076298,Ip Man 4: The Finale,2019,7.0,85
+tt1386932,Ip Man 2,2010,7.5,97
+tt11199464,Ip Man and Four Kings,2019,4.9,0
+tt2495118,Ip Man: The Final Fight,2013,6.1,67
+tt0369610,Jurassic World,2015,6.9,72
+tt4881806,Jurassic World: Fallen Kingdom,2018,6.1,47
+tt8041270,Jurassic World Dominion,2022,5.6,29
+tt31036941,Jurassic World Rebirth,2025,6.2,52
+tt0079501,Mad Max,1979,6.8,89
+tt0082694,Mad Max 2,1981,7.6,93
+tt0089530,Mad Max Beyond Thunderdome,1985,6.2,81
+tt12037194,Furiosa: A Mad Max Saga,2024,7.5,90
+tt0097733,Lethal Weapon 2,1989,7.3,82
+tt0122151,Lethal Weapon 4,1998,6.6,52
+tt0063442,Planet of the Apes,1968,8.0,86
+tt0065462,Beneath the Planet of the Apes,1970,6.0,37
+tt0067065,Escape from the Planet of the Apes,1971,6.3,75
+tt0068408,Conquest of the Planet of the Apes,1972,6.1,52
+tt0069768,Battle for the Planet of the Apes,1973,5.4,33
+tt0133152,Planet of the Apes,2001,5.7,43
+tt2103281,Dawn of the Planet of the Apes,2014,7.6,91
+tt11389872,Kingdom of the Planet of the Apes,2024,6.8,81
+tt2096672,Dumb and Dumber To,2014,5.6,30
+tt2488496,Star Wars: The Force Awakens,2015,7.8,93
+tt0120179,Speed 2: Cruise Control,1997,4.0,4
+tt2527336,Star Wars: The Last Jedi,2017,6.9,91
+tt2527338,Star Wars: The Rise of Skywalker,2019,6.4,51
+tt0120915,Star Wars: Episode I - The Phantom Menace,1999,6.5,54
+tt0121765,Star Wars: Episode II - Attack of the Clones,2002,6.6,61
+tt0121766,Star Wars: Episode III - Revenge of the Sith,2005,7.6,79
+tt0315327,Bruce Almighty,2003,6.8,48
+tt9603212,Mission: Impossible - Dead Reckoning Part One,2023,7.6,96
+tt9603208,Mission: Impossible - The Final Reckoning,2025,7.4,80
+tt0109686,Dumb and Dumber,1994,7.3,67
+tt15107334,Reclaiming Amy,2021,6.6,92
+tt0890870,Saw IV,2007,5.9,18
+tt1132626,Saw V,2008,5.8,13
+tt1233227,Saw VI,2009,6.0,39
+tt1477076,Saw 3D,2010,5.5,9
+tt3348730,Jigsaw,2017,5.7,32
+tt10342730,Spiral: From the Book of Saw,2021,5.2,38
+tt21807222,Saw X,2023,6.6,81
+tt0831399,The Three Musketeers,1993,7.3,0
+tt0091635,Nine 1/2 Weeks,1986,5.9,58
+tt0075314,Taxi Driver,1976,8.2,89
+tt0157583,Enigma,2001,6.4,71
+tt29355505,Toy Story 5,2026,0.0,0
+tt2310332,The Hobbit: The Battle of the Five Armies,2014,7.4,59
+tt31193180,Sinners,2025,7.7,96
+tt0479143,Rocky Balboa,2006,7.1,78
+tt0100507,Rocky V,1990,5.4,32
+tt0054272,Brainwashed,1960,6.9,0
+tt0337978,Live Free or Die Hard,2007,7.1,82
+tt0112864,Die Hard: With a Vengeance,1995,7.6,60
+tt0119116,The Fifth Element,1997,7.6,72
+tt0401792,Sin City,2005,8.0,76
+tt0058648,The Thin Red Line,1964,6.7,77
+tt0458525,X-Men Origins: Wolverine,2009,6.5,37
+tt0489270,Saw III,2006,6.2,29
+tt0432348,Saw II,2005,6.6,38
+tt3385516,X-Men: Apocalypse,2016,6.8,47
+tt3315342,Logan,2017,8.1,93
+tt1431045,Deadpool,2016,8.0,85
+tt3076658,Creed,2015,7.6,95
+tt6565702,Dark Phoenix,2019,5.7,22
+tt4682266,The New Mutants,2020,5.3,37
+tt0120903,X-Men,2000,7.3,82
+tt0290334,X2,2003,7.4,85
+tt0376994,X-Men: The Last Stand,2006,6.6,56
+tt0095705,The Naked Gun: From the Files of Police Squad!,1988,7.6,88
+tt5463162,Deadpool 2,2018,7.6,84
+tt1245526,RED,2010,7.0,72
+tt6343314,Creed II,2018,7.1,83
+tt0903624,The Hobbit: An Unexpected Journey,2012,7.8,64
+tt6263850,Deadpool & Wolverine,2024,7.5,78
+tt9218128,Gladiator II,2024,6.5,70
+tt1170358,The Hobbit: The Desolation of Smaug,2013,7.8,74
+tt1276104,Looper,2012,7.4,93
+tt11145118,Creed III,2023,6.7,89
+tt1948218,X-Men: First Class 35mm Special,2012,7.3,0
+tt12058584,Chess Story,2021,6.8,88
+tt0371174,The Saw Is Family: Making 'Leatherface',2003,5.5,0
+tt1430132,The Wolverine,2013,6.7,71
+tt1630029,Avatar: The Way of Water,2022,7.5,76
+tt1748122,Moonrise Kingdom,2012,7.8,93
+tt0443041,Hope Springs Eternal: A Look Back at The Shawshank Redemption,2004,7.4,0
+tt0087928,Police Academy,1984,6.7,58
+tt0217869,Unbreakable,2000,7.3,70
+tt0084967,The A-Team,1983,7.5,0
+tt0086759,Miami Vice,1984,7.6,0
+tt0088571,Moonlighting,1985,7.6,0
+tt33043892,Dexter: Resurrection,2025,9.1,0
+tt0089822,Police Academy 2: Their First Assignment,1985,5.8,32
+tt0093756,Police Academy 4: Citizens on Patrol,1987,5.0,0
+tt5950044,Superman,2025,7.6,83
+tt0094074,Superman IV: The Quest for Peace,1987,3.7,14
+tt0091474,Manhunter,1986,7.2,94
+tt0110857,Police Academy: Mission to Moscow,1994,3.5,0
+tt0095882,Police Academy 5: Assignment Miami Beach,1988,4.6,0
+tt0098105,Police Academy 6: City Under Siege,1989,4.4,0
+tt0091777,Police Academy 3: Back in Training,1986,5.4,36
+tt0367959,Hannibal Rising,2007,6.1,16
+tt0974015,Justice League,2017,6.0,39
+tt0348150,Superman Returns,2006,6.1,72
+tt1790809,Pirates of the Caribbean: Dead Men Tell No Tales,2017,6.5,30
+tt1298650,Pirates of the Caribbean: On Stranger Tides,2011,6.6,32
+tt2975590,Batman v Superman: Dawn of Justice,2016,6.4,28
+tt0367882,Indiana Jones and the Kingdom of the Crystal Skull,2008,6.2,77
+tt0449088,Pirates of the Caribbean: At World's End,2007,7.1,43
+tt2119532,Hacksaw Ridge,2016,8.1,84
+tt1462764,Indiana Jones and the Dial of Destiny,2023,6.5,70
+tt0770828,Man of Steel,2013,7.1,57
+tt12361974,Zack Snyder's Justice League,2021,7.9,71
+tt0081573,Superman II,1980,6.8,88
+tt0087469,Indiana Jones and the Temple of Doom,1984,7.5,77
+tt0097576,Indiana Jones and the Last Crusade,1989,8.2,84
+tt0090329,Witness,1985,7.4,94
+tt0086393,Superman III,1983,5.0,31
+tt0289765,Red Dragon,2002,7.2,69
+tt0118571,Air Force One,1997,6.5,79
+tt0105112,Patriot Games,1992,6.8,72
+tt0070355,Magnum Force,1973,7.2,69
+tt0074483,The Enforcer,1976,6.7,69
+tt0086383,Sudden Impact,1983,6.6,51
+tt0094963,The Dead Pool,1988,6.3,53
+tt0936501,Taken,2008,7.7,60
+tt1397280,Taken 2,2012,6.2,22
+tt2446042,Taken 3,2014,6.0,12
+tt1951264,The Hunger Games: Catching Fire,2013,7.5,90
+tt1951265,The Hunger Games: Mockingjay - Part 1,2014,6.6,70
+tt1951266,The Hunger Games: Mockingjay - Part 2,2015,6.6,70
+tt1129442,Transporter 3,2008,6.1,40
+tt0085750,Jaws 3-D,1983,3.7,10
+tt2938956,The Transporter Refueled,2015,5.2,16
+tt0058461,A Fistful of Dollars,1964,7.9,98
+tt1877830,The Batman,2022,7.8,85
+tt0086837,2010,1984,6.7,68
+tt3323366,2001: A Space Odyssey - A Look Behind the Future,1966,6.6,0
+tt1637688,In Time,2011,6.7,36
+tt0077766,Jaws 2,1978,5.8,57
+tt0093300,Jaws: The Revenge,1987,3.0,2
+tt1386703,Total Recall,2012,6.2,30
+tt10545296,The Hunger Games: The Ballad of Songbirds & Snakes,2023,6.7,64
+tt0995045,The Making of Jaws 3-D: Sharks Don't Die,1983,6.6,0
+tt11315808,Joker: Folie à Deux,2024,5.2,31
+tt0082198,Conan the Barbarian,1982,6.9,67
+tt0087078,Conan the Destroyer,1984,5.9,29
+tt0995030,The Making of Jaws The Revenge,1987,7.7,0
+tt0107798,The Pelican Brief,1993,6.6,54
+tt0285331,24,2001,8.4,0
+tt27713897,Arnold,2023,8.0,0
+tt0081858,Falcon Crest,1981,6.2,0
+tt0287978,Daredevil,2003,5.3,43
+tt0458339,Captain America: The First Avenger,2011,6.9,80
+tt1843866,Captain America: The Winter Soldier,2014,7.7,90
+tt3498820,Captain America: Civil War,2016,7.8,90
+tt14513804,Captain America: Brave New World,2025,5.7,46
+tt0371746,Iron Man,2008,7.9,94
+tt1228705,Iron Man 2,2010,6.9,72
+tt1300854,Iron Man 3,2013,7.1,79
+tt22022452,Inside Out 2,2024,7.5,91
+tt2096673,Inside Out,2015,8.1,98
+tt0317248,City of God,2002,8.6,91
+tt0086681,Charles in Charge,1984,6.1,0
+tt0112384,Apollo 13,1995,7.7,94
+tt0112818,Dead Man Walking,1995,7.5,95
+tt0120686,Stepmom,1998,6.8,44
+tt1535109,Captain Phillips,2013,0.0,0
+tt0338348,The Polar Express,2004,0.0,0
+tt0070328,Live and Let Die,1973,6.7,67
+tt0071807,The Man with the Golden Gun,1974,6.7,40
+tt0076752,The Spy Who Loved Me,1977,7.0,82
+tt0079574,Moonraker,1979,6.3,59
+tt0082398,For Your Eyes Only,1981,6.7,69
+tt0086034,Octopussy,1983,6.5,42
+tt0090264,A View to a Kill,1985,6.3,36
+tt0093428,The Living Daylights,1987,6.7,72
+tt0097742,Licence to Kill,1989,6.7,79
+tt0113189,GoldenEye,1995,7.2,80
+tt0120347,Tomorrow Never Dies,1997,6.5,57
+tt0143145,The World Is Not Enough,1999,6.4,51
+tt0246460,Die Another Day,2002,6.1,56
+tt0381061,Casino Royale,2006,8.0,94
+tt0830515,Quantum of Solace,2008,6.5,63
+tt1074638,Skyfall,2012,7.8,92
+tt2379713,Spectre,2015,6.8,63
+tt2382320,No Time to Die,2021,7.3,83
+tt5052448,Get Out,2017,7.8,98
+tt0077631,Grease,1978,7.2,65
+tt0055928,Dr. No,1962,7.2,95
+tt0057076,From Russia with Love,1963,7.3,97
+tt0058150,Goldfinger,1964,7.7,99
+tt0059800,Thunderball,1965,6.9,85
+tt0062512,You Only Live Twice,1967,6.8,73
+tt0064757,On Her Majesty's Secret Service,1969,6.7,81
+tt0066995,Diamonds Are Forever,1971,6.5,64
+tt0110475,The Mask,1994,7.0,80
