@@ -410,9 +410,7 @@ series_docs = db.collection("favorites").where("type", "==", "show").stream()
 st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
 st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
 st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
-st.markdown("""
-    <h1 style='text-align:center;'>🍿 <b>Serkan’s To‑Watch Movies &amp; Series <span style="color:#2ecc71;">ONLINE ✅</span></b></h1>
-""", unsafe_allow_html=True)
+st.markdown("<h1>🍿 Serkan'ın İzlenecek Film & Dizi Listesi <span style='color: orange'>ONLINE ✅</span></h1>", unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 2])
 with col1:
@@ -632,7 +630,7 @@ if query:
                 st.rerun()
 
 st.divider()
-st.subheader("❤️ Your Favorites")
+st.subheader("❤️ İzlenecekler Listesi")
 sort_option = st.selectbox("Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=2)
     
 def get_sort_key(fav):
@@ -726,9 +724,9 @@ def show_favorites(fav_type, label):
                     st.rerun()
 
 if media_type == "Movie":
-    show_favorites("movie", "Favorite Movies")
+    show_favorites("movie", "Filmler")
 elif media_type == "TV Show":
-    show_favorites("show", "Favorite TV Shows")
+    show_favorites("show", "Diziler")
 
 st.markdown("---")
 if st.button("🔝 Go to Top Again"):
