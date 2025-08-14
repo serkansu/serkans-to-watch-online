@@ -307,7 +307,7 @@ def sort_flat_for_export(items, mode):
             return int(it.get("cineselectRating") or 0)
         except Exception:
             return 0
-    return sorted(items or [], key=key_fn, reverse=True)
+    return sorted(items or [], key=key_fn, reverse=(mode != "cc"))
 
 # ---------------------- CineSelect clamp & sync helpers ----------------------
 def _clamp_cs(v: int | float) -> int:
@@ -317,8 +317,8 @@ def _clamp_cs(v: int | float) -> int:
         iv = 0
     if iv < 1:
         return 1
-    if iv > 10000:
-        return 10000
+    if iv > 100:
+        return 100
     return iv
 
 # Streamlit on_change helpers to keep slider and input in sync
@@ -438,7 +438,7 @@ with col2:
         ["imdb", "cc", "year"],
         key="sync_sort_mode",
         horizontal=True,
-        help="IMDb = IMDb puanı, cc = CineSelect, year = Yıl. Hepsi yüksekten düşüğe sıralar."
+        help="IMDb/Year: yüksekten düşüğe • CineSelect: küçükten büyüğe sıralar."
     )
 
 def show_favorites_count():
@@ -528,8 +528,8 @@ if query:
 
             slider_key = f"stars_{item['id']}"
             manual_key = f"manual_{item['id']}"
-            slider_val = st.slider("🎯 CineSelect Rating:", 1, 10000, st.session_state.get(slider_key, 5000), step=10, key=slider_key)
-            manual_val = st.number_input("Manual value:", min_value=1, max_value=10000, value=slider_val, step=1, key=manual_key)
+            slider_val = st.slider("🎯 CineSelect Rating:", 1, 100, st.session_state.get(slider_key, 50), step=1, key=slider_key)
+            manual_val = st.number_input("Manual value:", min_value=1, max_value=100, value=slider_val, step=1, key=manual_key)
 
             if st.button("Add to Favorites", key=f"btn_{item['id']}"):
                 media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
@@ -648,7 +648,11 @@ def get_sort_key(fav):
 
 def show_favorites(fav_type, label):
     docs = db.collection("favorites").where("type", "==", fav_type).stream()
-    favorites = sorted([doc.to_dict() for doc in docs], key=get_sort_key, reverse=True)
+    favorites = sorted(
+        [doc.to_dict() for doc in docs],
+        key=get_sort_key,
+        reverse=(sort_option != "CineSelect")
+    )
 
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(favorites):
@@ -682,18 +686,18 @@ def show_favorites(fav_type, label):
         if st.session_state.get(f"edit_mode_{fav['id']}", False):
             s_key = f"slider_{fav['id']}"
             i_key = f"input_{fav['id']}"
-            current = _clamp_cs(fav.get("cineselectRating", 5000))
+            current = _clamp_cs(fav.get("cineselectRating", 50))
             if s_key not in st.session_state:
                 st.session_state[s_key] = current
             if i_key not in st.session_state:
                 st.session_state[i_key] = current
 
             st.slider(
-                "🎯 CS:", 1, 10000, st.session_state[s_key], step=1,
+                "🎯 CS:", 1, 100, st.session_state[s_key], step=1,
                 key=s_key, on_change=_sync_cs_from_slider, args=(s_key, i_key)
             )
             st.number_input(
-                "CS (manuel):", min_value=1, max_value=10000, value=st.session_state[i_key], step=1,
+                "CS (manuel):", min_value=1, max_value=100, value=st.session_state[i_key], step=1,
                 key=i_key, on_change=_sync_cs_from_input, args=(i_key, s_key)
             )
 
@@ -707,7 +711,7 @@ def show_favorites(fav_type, label):
                     st.rerun()
             with cols_edit[1]:
                 if st.button("📌 Başa tuttur", key=f"pin_{fav['id']}"):
-                    # Aynı türdeki favorilerde en yüksek CS'yi bul, 10 ekle (üst sınır 10000)
+                    # Aynı türdeki favorilerde en yüksek CS'yi bul, 10 ekle (üst sınır 100)
                     cur_max = 0
                     for d in db.collection("favorites").where("type", "==", fav_type).stream():
                         try:
