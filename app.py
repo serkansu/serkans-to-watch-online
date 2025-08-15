@@ -10,6 +10,10 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+from datetime import datetime
+# --- helpers: normalize title for equality checks ---
+def _norm_title(t: str) -> str:
+    return (t or "").strip().lower()
 # ---------- Sorting helpers for Streamio export ----------
 ROMAN_MAP = {
     "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
@@ -533,6 +537,37 @@ query = st.text_input(
     key="query_input",
 )
 
+# --- Build quick lookups for existing favorites (to warn inside search results)
+_current_sort = st.session_state.get("fav_sort", "IMDb")
+_movies_all = list(st.session_state.get("favorite_movies", []))
+_shows_all  = list(st.session_state.get("favorite_series", []))
+
+# Reuse existing sorting logic so positions match the list below
+_movies_sorted = sorted(_movies_all, key=lambda fav: (
+    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
+    else float(fav.get("rt", 0)) if _current_sort == "RT"
+    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
+    else int(fav.get("year", 0)) if _current_sort == "Year"
+    else 0
+), reverse=(_current_sort != "CineSelect"))
+_shows_sorted  = sorted(_shows_all, key=lambda fav: (
+    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
+    else float(fav.get("rt", 0)) if _current_sort == "RT"
+    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
+    else int(fav.get("year", 0)) if _current_sort == "Year"
+    else 0
+), reverse=(_current_sort != "CineSelect"))
+
+# Maps like "title::year" -> (favorite_dict, position)
+_movies_idx = {}
+for pos, f in enumerate(_movies_sorted, start=1):
+    _key = f"{_norm_title(f.get('title'))}::{str(f.get('year') or '')}"
+    _movies_idx[_key] = (f, pos)
+
+_shows_idx = {}
+for pos, f in enumerate(_shows_sorted, start=1):
+    _key = f"{_norm_title(f.get('title'))}::{str(f.get('year') or '')}"
+    _shows_idx[_key] = (f, pos)
 if query:
     st.session_state.query = query
     if media_type == "Movie":
@@ -571,6 +606,27 @@ if query:
                     st.image(poster_url, width=180)
 
             st.markdown(f"**{idx+1}. {item['title']} ({item.get('year', '—')})**")
+
+            # --- warn inline if this exact title+year already exists in favorites ---
+            _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
+            if media_type == "Movie" and _item_key in _movies_idx:
+                _fav, _pos = _movies_idx[_item_key]
+                _cs = _fav.get('cineselectRating', 'N/A')
+                _added = _fav.get('addedAt')
+                try:
+                    _added_txt = _added.strftime("%Y-%m-%d") if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                except Exception:
+                    _added_txt = "—"
+                st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
+            elif media_type == "TV Show" and _item_key in _shows_idx:
+                _fav, _pos = _shows_idx[_item_key]
+                _cs = _fav.get('cineselectRating', 'N/A')
+                _added = _fav.get('addedAt')
+                try:
+                    _added_txt = _added.strftime("%Y-%m-%d") if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                except Exception:
+                    _added_txt = "—"
+                st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
 
             # IMDb rating display: prefer explicit imdbRating; if not present, use numeric `imdb` when it is a rating
             _imdb_rating_field = item.get("imdbRating", None)
@@ -660,8 +716,13 @@ if query:
                     import json as _json
                     st.caption("OMDb by title (raw JSON)")
                     st.code(_json.dumps(raw_title, ensure_ascii=False, indent=2))
-                # 3) Firestore'a yaz
-                db.collection("favorites").document(item["id"]).set({
+                # 3) Firestore'a yaz (varsa addedAt'i koru, yoksa ilk kez ekleniyorsa server timestamp ver)
+                _doc_ref = db.collection("favorites").document(item["id"])
+                _prev = _doc_ref.get()
+                _prev_data = _prev.to_dict() if _prev.exists else {}
+                _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
+
+                payload = {
                     "id": item["id"],
                     "title": item["title"],
                     "year": item.get("year"),
@@ -671,7 +732,18 @@ if query:
                     "rt": rt_score,                            # ✅ CSV/OMDb’den gelen kesin değer
                     "cineselectRating": manual_val,
                     "type": media_key,
-                })
+                    "addedAt": _added_at,
+                }
+                _doc_ref.set(payload)
+
+                if _prev.exists:
+                    # Bilgilendirme: Bu TMDB id zaten listedeydi; alanlar güncellendi.
+                    try:
+                        _when = _prev_data.get("addedAt")
+                        _when_txt = _when.strftime("%Y-%m-%d") if hasattr(_when, "strftime") else str(_when)
+                    except Exception:
+                        _when_txt = "—"
+                    st.info(f"ℹ️ Bu öğe zaten listendeydi (ilk eklenme: {_when_txt}); bilgiler güncellendi.", icon="ℹ️")
                 # 4) seed_ratings.csv'ye (yoksa) ekle
                 append_seed_rating(
                     imdb_id=imdb_id,
@@ -690,17 +762,21 @@ if query:
 
 st.divider()
 st.subheader("❤️ İzlenecekler Listesi")
-sort_option = st.selectbox("Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=0)
-    
+
+sort_option = st.selectbox(
+    "Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=0, key="fav_sort"
+)
+
 def get_sort_key(fav):
+    sort_name = st.session_state.get("fav_sort", "IMDb")
     try:
-        if sort_option == "IMDb":
+        if sort_name == "IMDb":
             return float(fav.get("imdbRating", 0) or 0)
-        elif sort_option == "RT":
+        elif sort_name == "RT":
             return float(fav.get("rt", 0))
-        elif sort_option == "CineSelect":
+        elif sort_name == "CineSelect":
             return fav.get("cineselectRating", 0)
-        elif sort_option == "Year":
+        elif sort_name == "Year":
             return int(fav.get("year", 0))
     except:
         return 0
@@ -710,7 +786,7 @@ def show_favorites(fav_type, label):
     favorites = sorted(
         [doc.to_dict() for doc in docs],
         key=get_sort_key,
-        reverse=(sort_option != "CineSelect")
+        reverse=(st.session_state.get("fav_sort", "IMDb") != "CineSelect")
     )
 
     st.markdown(f"### 📁 {label}")
@@ -830,4 +906,3 @@ if st.button("🔝 Go to Top Again"):
     st.rerun()
 
 st.markdown("<p style='text-align: center; color: gray;'>Created by <b>SS</b></p>", unsafe_allow_html=True)
-    
