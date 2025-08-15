@@ -334,7 +334,18 @@ def _sync_cs_from_input(src_key: str, dst_key: str):
     st.session_state[src_key] = v
     st.session_state[dst_key] = v
 
-def sync_with_firebase(sort_mode="cc"):
+
+# --- Safe session state setter for Streamlit widgets ---
+def _safe_set_state(key: str, value):
+    """Set session_state[key] safely; ignore Streamlit exceptions that occur
+    when attempting to modify a widget key after instantiation within the same run."""
+    try:
+        st.session_state[key] = value
+    except Exception:
+        # On Streamlit rerun, the new value will be reflected anyway.
+        pass
+
+def sync_with_firebase(sort_mode="imdb"):
     favorites_data = {
         "movies": st.session_state.get("favorite_movies", []),
         "shows": st.session_state.get("favorite_series", [])
@@ -441,12 +452,12 @@ with col2:
     if st.button("🖼️ Toggle Posters"):
         st.session_state["show_posters"] = not st.session_state["show_posters"]
 
-    # Varsayılan sıralama modu (cc = CineSelect)
+    # Varsayılan sıralama modu: IMDb (yüksekten düşüğe)
     if "sync_sort_mode" not in st.session_state:
-        st.session_state["sync_sort_mode"] = "year"
+        st.session_state["sync_sort_mode"] = "imdb"
 
     if st.button("📂 JSON & CSV Sync"):
-        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
+        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
         st.success("✅ favorites.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
@@ -648,7 +659,7 @@ if query:
 
 st.divider()
 st.subheader("❤️ İzlenecekler Listesi")
-sort_option = st.selectbox("Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=2)
+sort_option = st.selectbox("Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=0)
     
 def get_sort_key(fav):
     try:
@@ -753,8 +764,8 @@ def show_favorites(fav_type, label):
                     except Exception as e:
                         st.error(f"⚠️ Başa tutturma sırasında Firestore hatası: {e}")
                         return
-                    st.session_state[s_key] = pin_val
-                    st.session_state[i_key] = pin_val
+                    _safe_set_state(s_key, pin_val)
+                    _safe_set_state(i_key, pin_val)
                     st.success(f"📌 {fav['title']} en üste taşındı (CS={pin_val}).")
                     st.rerun()
 
