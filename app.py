@@ -410,6 +410,23 @@ series_docs = db.collection("favorites").where("type", "==", "show").stream()
 st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
 st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
 st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
+
+# --- Mobile Home Screen & Favicons ---
+# High-res icons for iOS/Android home screen shortcuts and browser favicons.
+ICON_180 = "https://em-content.zobj.net/source/apple/391/popcorn_1f37f.png"      # iOS (180x180)
+ICON_192 = "https://em-content.zobj.net/source/microsoft-teams/363/popcorn_1f37f.png"  # Android (~192x192)
+ICON_512 = "https://em-content.zobj.net/source/telegram/358/popcorn_1f37f.png"   # Android (~512x512)
+
+st.markdown(
+    f"""
+    <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"{ICON_180}\">\n
+    <link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"{ICON_192}\">\n
+    <link rel=\"icon\" type=\"image/png\" sizes=\"512x512\" href=\"{ICON_512}\">\n
+    <meta name=\"theme-color\" content=\"#111111\">\n
+    """,
+    unsafe_allow_html=True,
+)
+# --- /Mobile Home Screen & Favicons ---
 st.markdown("<h1>🍿 Serkan'ın İzlenecek Film & Dizi Listesi <span style='color: orange'>ONLINE ✅</span></h1>", unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 2])
@@ -656,8 +673,17 @@ def show_favorites(fav_type, label):
 
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(favorites):
-        imdb_display = f"{float(fav.get('imdbRating', 0) or 0):.1f}" if (fav.get("imdbRating") not in (None, "", "N/A")) else "N/A"
-        rt_display = f"{fav['rt']}%" if isinstance(fav["rt"], (int, float)) else "N/A"
+        imdb_display = (
+            f"{float(fav.get('imdbRating', 0) or 0):.1f}"
+            if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
+            else "N/A"
+        )
+        _rt_val = fav.get('rt', None)
+        try:
+            _rt_val_num = int(float(_rt_val)) if _rt_val not in (None, "", "N/A") else 0
+        except Exception:
+            _rt_val_num = 0
+        rt_display = f"{_rt_val_num}%" if _rt_val_num > 0 else "N/A"
         cols = st.columns([1, 5, 1, 1])
         with cols[0]:
             if show_posters and fav.get("poster"):
@@ -714,14 +740,19 @@ def show_favorites(fav_type, label):
                     # Aynı türdeki favorilerde en yüksek CS'yi bul, 10 ekle (üst sınır 100)
                     cur_max = 0
                     for d in db.collection("favorites").where("type", "==", fav_type).stream():
+                        raw = (d.to_dict() or {}).get("cineselectRating")
                         try:
-                            cs = int((d.to_dict() or {}).get("cineselectRating") or 0)
-                            if cs > cur_max:
-                                cur_max = cs
+                            cs = int(raw)
                         except Exception:
-                            pass
+                            cs = 0
+                        if cs > cur_max:
+                            cur_max = cs
                     pin_val = _clamp_cs(cur_max + 10)
-                    db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
+                    try:
+                        db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
+                    except Exception as e:
+                        st.error(f"⚠️ Başa tutturma sırasında Firestore hatası: {e}")
+                        return
                     st.session_state[s_key] = pin_val
                     st.session_state[i_key] = pin_val
                     st.success(f"📌 {fav['title']} en üste taşındı (CS={pin_val}).")
