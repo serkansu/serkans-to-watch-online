@@ -748,17 +748,20 @@ def show_favorites(fav_type, label):
                     st.rerun()
             with cols_edit[1]:
                 if st.button("📌 Başa tuttur", key=f"pin_{fav['id']}"):
-                    # Aynı türdeki favorilerde en yüksek CS'yi bul, 10 ekle (üst sınır 100)
-                    cur_max = 0
+                    # En üste taşımak için: mevcut listedeki EN DÜŞÜK CS değerini bul ve bir eksik ver (alt sınır 1)
+                    cur_min = None
                     for d in db.collection("favorites").where("type", "==", fav_type).stream():
                         raw = (d.to_dict() or {}).get("cineselectRating")
                         try:
                             cs = int(raw)
                         except Exception:
-                            cs = 0
-                        if cs > cur_max:
-                            cur_max = cs
-                    pin_val = _clamp_cs(cur_max + 10)
+                            continue
+                        if cs <= 0:
+                            continue
+                        if cur_min is None or cs < cur_min:
+                            cur_min = cs
+                    base = cur_min if cur_min is not None else 50
+                    pin_val = _clamp_cs(base - 1)  # 1'in altına düşmez
                     try:
                         db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
                     except Exception as e:
