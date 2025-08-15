@@ -748,25 +748,42 @@ def show_favorites(fav_type, label):
                     st.rerun()
             with cols_edit[1]:
                 if st.button("📌 Başa tuttur", key=f"pin_{fav['id']}"):
-                    # En üste taşımak için: mevcut listedeki EN DÜŞÜK CS değerini bul ve bir eksik ver (alt sınır 1)
-                    cur_min = None
-                    for d in db.collection("favorites").where("type", "==", fav_type).stream():
-                        raw = (d.to_dict() or {}).get("cineselectRating")
-                        try:
-                            cs = int(raw)
-                        except Exception:
-                            continue
-                        if cs <= 0:
-                            continue
-                        if cur_min is None or cs < cur_min:
-                            cur_min = cs
-                    base = cur_min if cur_min is not None else 50
-                    pin_val = _clamp_cs(base - 1)  # 1'in altına düşmez
+                    # Mevcut ekranda görünen listedeki EN DÜŞÜK CS değerini bul (0 veya None hariç)
+                    try:
+                        visible_cs = [
+                            int(x.get("cineselectRating") or 0)
+                            for x in favorites
+                            if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
+                        ]
+                    except Exception:
+                        visible_cs = []
+
+                    if visible_cs:
+                        base = min(visible_cs)
+                    else:
+                        # Yedek: Firestore'dan tara (olması gerekenden pahalı ama güvenli)
+                        base = None
+                        for d in db.collection("favorites").where("type", "==", fav_type).stream():
+                            raw = (d.to_dict() or {}).get("cineselectRating")
+                            try:
+                                cs = int(raw)
+                            except Exception:
+                                continue
+                            if cs <= 0:
+                                continue
+                            if base is None or cs < base:
+                                base = cs
+                        if base is None:
+                            base = 50
+
+                    pin_val = max(1, int(base) - 1)  # 1'in altına düşmez, 100'e sabitlemez
                     try:
                         db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
                     except Exception as e:
                         st.error(f"⚠️ Başa tutturma sırasında Firestore hatası: {e}")
                         return
+
+                    # Widget değerlerini güvenli şekilde güncelle
                     _safe_set_state(s_key, pin_val)
                     _safe_set_state(i_key, pin_val)
                     st.success(f"📌 {fav['title']} en üste taşındı (CS={pin_val}).")
