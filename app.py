@@ -225,7 +225,7 @@ def push_favorites_to_github():
 
     # Which file goes to which repo
     publish_plan = [
-        {"file": "favorites.json", "owner": "serkansu", "repo": "serkans-to-watch-addon"},
+        {"file": "favorites_stw.json", "owner": "serkansu", "repo": "serkans-to-watch-addon"},
         {"file": "seed_ratings.csv", "owner": "serkansu", "repo": "serkans-to-watch-online"},
     ]
 
@@ -435,10 +435,10 @@ def sync_with_firebase(sort_mode="imdb"):
         "movies": sorted_movies,
         "series": sorted_series,
     }
-    with open("favorites.json", "w", encoding="utf-8") as f:
+    with open("favorites_stw.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
         st.write("🔍 FAVORITES DEBUG (output):", output_data)
-    st.success("✅ favorites.json dosyası yerel olarak oluşturuldu.")
+    st.success("✅ favorites_stw.json dosyası yerel olarak oluşturuldu.")
 
     # GitHub'a push et
     push_favorites_to_github()
@@ -493,7 +493,7 @@ with col2:
 
     if st.button("📂 JSON & CSV Sync"):
         sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
-        st.success("✅ favorites.json ve seed_ratings.csv senkronize edildi.")
+        st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
     st.radio(
