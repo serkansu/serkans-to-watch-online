@@ -10,7 +10,27 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+# --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
+
+# --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
+class _EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        # Firestore Timestamp is a subclass of datetime (DatetimeWithNanoseconds)
+        if isinstance(o, datetime):
+            try:
+                return o.isoformat()
+            except Exception:
+                return str(o)
+        return super().default(o)
+
+def _strip_non_export_fields(item: dict) -> dict:
+    """Return a shallow copy without fields we don't want in favorites_stw.json."""
+    cleaned = dict(item or {})
+    # Firestore-only metadata should not go to the public JSON
+    cleaned.pop("addedAt", None)
+    return cleaned
+# --- /JSON export helpers ---
 # --- helpers: normalize title for equality checks ---
 def _norm_title(t: str) -> str:
     return (t or "").strip().lower()
@@ -430,13 +450,17 @@ def sync_with_firebase(sort_mode="imdb"):
     sorted_movies = sort_flat_for_export(favorites_data.get("movies", []), sort_mode)
     sorted_series = sort_flat_for_export(favorites_data.get("shows", []), sort_mode)
 
+    # Remove Firestore-only fields and ensure JSON-serializable types (timestamps -> ISO strings)
+    export_movies = [_strip_non_export_fields(x) for x in sorted_movies]
+    export_series = [_strip_non_export_fields(x) for x in sorted_series]
+
     # Dışarı yazarken anahtar adını 'shows' -> 'series' olarak çevir
     output_data = {
-        "movies": sorted_movies,
-        "series": sorted_series,
+        "movies": export_movies,
+        "series": export_series,
     }
     with open("favorites_stw.json", "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=4)
+        json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
         st.write("🔍 FAVORITES DEBUG (output):", output_data)
     st.success("✅ favorites_stw.json dosyası yerel olarak oluşturuldu.")
 
