@@ -336,6 +336,7 @@ def _sync_cs_from_input(src_key: str, dst_key: str):
 
 
 # --- Safe session state setter for Streamlit widgets ---
+
 def _safe_set_state(key: str, value):
     """Set session_state[key] safely; ignore Streamlit exceptions that occur
     when attempting to modify a widget key after instantiation within the same run."""
@@ -344,6 +345,31 @@ def _safe_set_state(key: str, value):
     except Exception:
         # On Streamlit rerun, the new value will be reflected anyway.
         pass
+
+# --- Simple session-based auth gate using an env var ---
+def ensure_authenticated():
+    """If APP_ACCESS_KEY is set in env, ask for it once per browser tab.
+    When correct, remember in st.session_state until the tab is closed or refreshed.
+    """
+    key = (os.getenv("APP_ACCESS_KEY") or "").strip()
+    if not key:
+        # No key configured -> app stays public
+        return
+
+    if st.session_state.get("_auth_ok", False):
+        return
+
+    st.title("🔒 Serkan’s To‑Watch Online")
+    st.info("Bu sayfa şifre ile korunuyor. Lütfen erişim anahtarını girin.")
+    pw = st.text_input("Şifre", type="password", key="__app_pw")
+    if st.button("Giriş", key="__app_login"):
+        if pw == key:
+            st.session_state["_auth_ok"] = True
+            st.rerun()
+        else:
+            st.error("Yanlış şifre. Tekrar deneyin.")
+    st.stop()
+# --- /auth gate ---
 
 def sync_with_firebase(sort_mode="imdb"):
     favorites_data = {
@@ -413,14 +439,19 @@ def sync_with_firebase(sort_mode="imdb"):
     # GitHub'a push et
     push_favorites_to_github()
 
+# Firestore will be initialized AFTER auth gate below.
+
+# --- Inserted: Page config and auth gate ---
+st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
+ensure_authenticated()
+
+# Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-# Firestore'dan verileri çek ve session'a yaz
 movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
 series_docs = db.collection("favorites").where("type", "==", "show").stream()
 
 st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
 st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
-st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
@@ -724,11 +755,51 @@ def show_favorites(fav_type, label):
             s_key = f"slider_{fav['id']}"
             i_key = f"input_{fav['id']}"
             current = _clamp_cs(fav.get("cineselectRating", 50))
+
+            # Initial widget state defaults
             if s_key not in st.session_state:
                 st.session_state[s_key] = current
             if i_key not in st.session_state:
                 st.session_state[i_key] = current
 
+            # --- PIN FIRST: handle "Başa tuttur" BEFORE rendering inputs so they reflect new value immediately ---
+            pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
+            if pin_now:
+                # Find the lowest CS visible on-screen (excluding 0/None)
+                try:
+                    visible_cs = [
+                        int(x.get("cineselectRating") or 0)
+                        for x in favorites
+                        if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
+                    ]
+                except Exception:
+                    visible_cs = []
+
+                if visible_cs:
+                    base = min(visible_cs)
+                else:
+                    # Fallback: scan Firestore
+                    base = None
+                    for d in db.collection("favorites").where("type", "==", fav_type).stream():
+                        raw = (d.to_dict() or {}).get("cineselectRating")
+                        try:
+                            cs = int(raw)
+                        except Exception:
+                            continue
+                        if cs <= 0:
+                            continue
+                        if base is None or cs < base:
+                            base = cs
+                    if base is None:
+                        base = 50
+
+                pin_val = max(1, int(base) - 1)  # never below 1
+                # Stage new value into widgets (no Firestore write yet)
+                _safe_set_state(s_key, pin_val)
+                _safe_set_state(i_key, pin_val)
+                st.info(f"📌 Yeni CS {pin_val} olarak ayarlandı. '✅ Kaydet' ile onaylayın.")
+
+            # --- Now render inputs using (possibly updated) session state ---
             st.slider(
                 "🎯 CS:", 1, 100, st.session_state[s_key], step=1,
                 key=s_key, on_change=_sync_cs_from_slider, args=(s_key, i_key)
@@ -738,56 +809,16 @@ def show_favorites(fav_type, label):
                 key=i_key, on_change=_sync_cs_from_input, args=(i_key, s_key)
             )
 
-            cols_edit = st.columns([1,1,2])
+            cols_edit = st.columns([1,2])
             with cols_edit[0]:
                 if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
                     new_val = _clamp_cs(st.session_state.get(i_key, st.session_state.get(s_key, current)))
                     db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
-                    st.success(f"✅ {fav['title']} güncellendi.")
+                    st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
                     st.session_state[f"edit_mode_{fav['id']}"] = False
                     st.rerun()
             with cols_edit[1]:
-                if st.button("📌 Başa tuttur", key=f"pin_{fav['id']}"):
-                    # Mevcut ekranda görünen listedeki EN DÜŞÜK CS değerini bul (0 veya None hariç)
-                    try:
-                        visible_cs = [
-                            int(x.get("cineselectRating") or 0)
-                            for x in favorites
-                            if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
-                        ]
-                    except Exception:
-                        visible_cs = []
-
-                    if visible_cs:
-                        base = min(visible_cs)
-                    else:
-                        # Yedek: Firestore'dan tara (olması gerekenden pahalı ama güvenli)
-                        base = None
-                        for d in db.collection("favorites").where("type", "==", fav_type).stream():
-                            raw = (d.to_dict() or {}).get("cineselectRating")
-                            try:
-                                cs = int(raw)
-                            except Exception:
-                                continue
-                            if cs <= 0:
-                                continue
-                            if base is None or cs < base:
-                                base = cs
-                        if base is None:
-                            base = 50
-
-                    pin_val = max(1, int(base) - 1)  # 1'in altına düşmez, 100'e sabitlemez
-                    try:
-                        db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
-                    except Exception as e:
-                        st.error(f"⚠️ Başa tutturma sırasında Firestore hatası: {e}")
-                        return
-
-                    # Widget değerlerini güvenli şekilde güncelle
-                    _safe_set_state(s_key, pin_val)
-                    _safe_set_state(i_key, pin_val)
-                    st.success(f"📌 {fav['title']} en üste taşındı (CS={pin_val}).")
-                    st.rerun()
+                st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if media_type == "Movie":
     show_favorites("movie", "Filmler")
