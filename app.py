@@ -487,9 +487,9 @@ with col2:
     if st.button("🖼️ Toggle Posters"):
         st.session_state["show_posters"] = not st.session_state["show_posters"]
 
-    # Varsayılan sıralama modu: IMDb (yüksekten düşüğe)
+    # Varsayılan sıralama modu: CineSelect (küçükten büyüğe)
     if "sync_sort_mode" not in st.session_state:
-        st.session_state["sync_sort_mode"] = "imdb"
+        st.session_state["sync_sort_mode"] = "cc"
 
     if st.button("📂 JSON & CSV Sync"):
         sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
@@ -538,7 +538,7 @@ query = st.text_input(
 )
 
 # --- Build quick lookups for existing favorites (to warn inside search results)
-_current_sort = st.session_state.get("fav_sort", "IMDb")
+_current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
 
@@ -764,21 +764,29 @@ st.divider()
 st.subheader("❤️ İzlenecekler Listesi")
 
 sort_option = st.selectbox(
-    "Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=0, key="fav_sort"
+    "Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=2, key="fav_sort"
 )
 
 def get_sort_key(fav):
-    sort_name = st.session_state.get("fav_sort", "IMDb")
+    # Default sort name to CineSelect
+    sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
         if sort_name == "IMDb":
             return float(fav.get("imdbRating", 0) or 0)
         elif sort_name == "RT":
-            return float(fav.get("rt", 0))
+            return float(fav.get("rt", 0) or 0)
         elif sort_name == "CineSelect":
-            return fav.get("cineselectRating", 0)
+            # CineSelect ASCENDING; tie-break by IMDb DESC
+            cs = int(fav.get("cineselectRating", 0) or 0)
+            imdb = float(fav.get("imdbRating", 0) or 0)
+            # For reverse=False later, return (cs asc, -imdb asc == imdb desc)
+            return (cs, -imdb)
         elif sort_name == "Year":
-            return int(fav.get("year", 0))
-    except:
+            return int(fav.get("year", 0) or 0)
+    except Exception:
+        # Robust fallback key
+        if sort_name == "CineSelect":
+            return (int(fav.get("cineselectRating", 0) or 0), -float(fav.get("imdbRating", 0) or 0))
         return 0
 
 def show_favorites(fav_type, label):
@@ -786,7 +794,7 @@ def show_favorites(fav_type, label):
     favorites = sorted(
         [doc.to_dict() for doc in docs],
         key=get_sort_key,
-        reverse=(st.session_state.get("fav_sort", "IMDb") != "CineSelect")
+        reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
     )
 
     st.markdown(f"### 📁 {label}")
