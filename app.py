@@ -425,7 +425,7 @@ def ensure_authenticated():
     st.stop()
 # --- /auth gate ---
 
-def sync_with_firebase(sort_mode="imdb"):
+def sync_with_firebase(sort_mode="cc"):
     favorites_data = {
         "movies": st.session_state.get("favorite_movies", []),
         "shows": st.session_state.get("favorite_series", [])
@@ -546,7 +546,7 @@ with col2:
         st.session_state["sync_sort_mode"] = "cc"
 
     if st.button("📂 JSON & CSV Sync"):
-        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
+        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
         st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
