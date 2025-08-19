@@ -472,6 +472,30 @@ def _fetch_favs_cached(kind: str, limit: int = 500) -> list[dict]:
             time.sleep(backoff)
             backoff = min(backoff * 2, 30.0)
 
+# --- Local disk snapshot as offline fallback ---
+SNAP_PATH = Path(__file__).parent / "last_favorites_cache.json"
+
+def _load_local_snapshot() -> tuple[list[dict], list[dict]]:
+    """Read last successful favorites snapshot from disk (if any)."""
+    try:
+        if SNAP_PATH.exists():
+            data = json.loads(SNAP_PATH.read_text(encoding="utf-8"))
+            return list(data.get("movies", [])), list(data.get("series", []))
+    except Exception:
+        pass
+    return [], []
+
+def _save_local_snapshot(movies: list[dict], shows: list[dict]) -> None:
+    """Persist a snapshot of favorites to disk for offline export."""
+    try:
+        payload = {"movies": movies or [], "series": shows or []}
+        SNAP_PATH.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, cls=_EnhancedJSONEncoder),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
 def sync_with_firebase(sort_mode="cc"):
     # Always try to use in‑memory lists; if empty, refresh from Firestore cache helper
     movies_ss = list(st.session_state.get("favorite_movies", []))
@@ -548,6 +572,7 @@ def sync_with_firebase(sort_mode="cc"):
     }
     with open("favorites_stw.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
+        st.caption(f"Export counts → movies: {len(export_movies)} • series: {len(export_series)}")
         st.write("🔍 FAVORITES DEBUG (output):", output_data)
     st.success("✅ favorites_stw.json dosyası yerel olarak oluşturuldu.")
 
@@ -574,10 +599,20 @@ with col_refresh:
 try:
     st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
     st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
+    # Save a local snapshot for offline export
+    if st.session_state.get("favorite_movies") or st.session_state.get("favorite_series"):
+        _save_local_snapshot(st.session_state.get("favorite_movies", []),
+                             st.session_state.get("favorite_series", []))
 except Exception:
     st.warning("⚠️ Firestore okuma kotası aşıldı veya zaman aşımı oldu. Ekranda en son veriler gösteriliyor.")
     st.session_state.setdefault("favorite_movies", st.session_state.get("favorite_movies", []))
     st.session_state.setdefault("favorite_series", st.session_state.get("favorite_series", []))
+    # Try to load from local snapshot to keep the UI/export usable
+    _m_snap, _s_snap = _load_local_snapshot()
+    if _m_snap or _s_snap:
+        st.info("📦 Firestore erişilemedi, yerel önbellekten son kaydı açtım (offline).")
+        st.session_state.setdefault("favorite_movies", _m_snap)
+        st.session_state.setdefault("favorite_series", _s_snap)
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
@@ -621,9 +656,19 @@ with col2:
         except Exception:
             pass
 
-        # Guard: do not overwrite JSON with empty arrays if fetch failed
-        if not st.session_state.get("favorite_movies") and not st.session_state.get("favorite_series"):
-            st.error("❌ Firestore'dan liste okunamadı (boş döndü). Tekrar deneyin ya da 'Yenile'ye basın.")
+        # Guard: avoid overwriting JSON with empty arrays; try local snapshot fallback first
+        _movies_cur = st.session_state.get("favorite_movies") or []
+        _series_cur = st.session_state.get("favorite_series") or []
+        if not _movies_cur and not _series_cur:
+            snap_m, snap_s = _load_local_snapshot()
+            if snap_m or snap_s:
+                st.info("📦 Firestore boş döndü; yerel önbellekten senkronize ediyorum…")
+                st.session_state["favorite_movies"] = snap_m
+                st.session_state["favorite_series"] = snap_s
+                sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
+                st.success("✅ Yerel önbellekten favorites_stw.json ve seed_ratings.csv senkronize edildi.")
+            else:
+                st.error("❌ Firestore'dan liste okunamadı (boş döndü) ve yerel önbellek yok. Tekrar deneyin ya da 'Yenile'ye basın.")
         else:
             sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
             st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
