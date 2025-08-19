@@ -594,6 +594,15 @@ col_refresh, _ = st.columns([1, 5])
 with col_refresh:
     if st.button("🔄 Yenile"):
         _fetch_favs_cached.clear()
+        try:
+            # Pull fresh data right away and repopulate session state
+            st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
+            st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
+            # Record last refresh time (UTC)
+            st.session_state["_cache_updated_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+            st.success(f"🔁 Liste yenilendi • {st.session_state['_cache_updated_at']}")
+        except Exception:
+            st.warning("⚠️ Firestore okuma kotası/timeout. Biraz sonra tekrar deneyebilir ya da 'JSON & CSV Sync'i kullanabilirsin.")
 
 # Güvenli/cached okuma + kota/timeout yakalama
 try:
@@ -613,6 +622,11 @@ except Exception:
         st.info("📦 Firestore erişilemedi, yerel önbellekten son kaydı açtım (offline).")
         st.session_state.setdefault("favorite_movies", _m_snap)
         st.session_state.setdefault("favorite_series", _s_snap)
+
+# --- Show last cache refresh timestamp under the header ---
+_last_ts = st.session_state.get("_cache_updated_at")
+if _last_ts:
+    st.caption(f"🗓️ Son yenileme: {_last_ts} (UTC)")
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
