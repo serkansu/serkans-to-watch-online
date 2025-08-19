@@ -697,11 +697,11 @@ with col2:
     )
 
 def show_favorites_count():
-    movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
-    series_docs = db.collection("favorites").where("type", "==", "show").stream()
+    movies = st.session_state.get("favorite_movies", []) or []
+    series = st.session_state.get("favorite_series", []) or []
 
-    movie_count = len(list(movie_docs))
-    series_count = len(list(series_docs))
+    movie_count = sum(1 for x in movies if (str(x.get("type") or "")).lower() == "movie")
+    series_count = sum(1 for x in series if (str(x.get("type") or "")).lower() in ("show", "series"))
 
     st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
 if st.button("📊 Favori Sayılarını Göster"):
@@ -984,9 +984,19 @@ def get_sort_key(fav):
         return 0
 
 def show_favorites(fav_type, label):
-    docs = db.collection("favorites").where("type", "==", fav_type).stream()
+    # Pull from session cache instead of hitting Firestore
+    all_movies = st.session_state.get("favorite_movies", []) or []
+    all_series = st.session_state.get("favorite_series", []) or []
+    base_list = all_movies if fav_type == "movie" else all_series
+
+    # Filter by requested type defensively
+    if fav_type == "movie":
+        favorites = [x for x in base_list if (str(x.get("type") or "")).lower() == "movie"]
+    else:
+        favorites = [x for x in base_list if (str(x.get("type") or "")).lower() in ("show", "series")]
+
     favorites = sorted(
-        [doc.to_dict() for doc in docs],
+        favorites,
         key=get_sort_key,
         reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
     )
@@ -1056,19 +1066,16 @@ def show_favorites(fav_type, label):
                 if visible_cs:
                     base = min(visible_cs)
                 else:
-                    # Fallback: scan Firestore
-                    base = None
-                    for d in db.collection("favorites").where("type", "==", fav_type).stream():
-                        raw = (d.to_dict() or {}).get("cineselectRating")
-                        try:
-                            cs = int(raw)
-                        except Exception:
-                            continue
-                        if cs <= 0:
-                            continue
-                        if base is None or cs < base:
-                            base = cs
-                    if base is None:
+                    # Offline-only fallback without Firestore scan
+                    try:
+                        all_list = st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", [])
+                        pool = [
+                            int(x.get("cineselectRating") or 0)
+                            for x in (all_list or [])
+                            if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
+                        ]
+                        base = min(pool) if pool else 50
+                    except Exception:
                         base = 50
 
                 pin_val = max(1, int(base) - 1)  # never below 1
