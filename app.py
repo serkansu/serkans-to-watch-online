@@ -34,6 +34,18 @@ def _strip_non_export_fields(item: dict) -> dict:
 # --- helpers: normalize title for equality checks ---
 def _norm_title(t: str) -> str:
     return (t or "").strip().lower()
+
+def _to_int(v, default=0):
+    try:
+        return int(str(v).strip())
+    except Exception:
+        return default
+
+def _to_float(v, default=0.0):
+    try:
+        return float(str(v).strip())
+    except Exception:
+        return default
 # ---------- Sorting helpers for Streamio export ----------
 ROMAN_MAP = {
     "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
@@ -596,19 +608,18 @@ _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
 
-# Reuse existing sorting logic so positions match the list below
 _movies_sorted = sorted(_movies_all, key=lambda fav: (
-    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
-    else float(fav.get("rt", 0)) if _current_sort == "RT"
-    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
-    else int(fav.get("year", 0)) if _current_sort == "Year"
+    _to_float(fav.get("imdbRating", 0)) if _current_sort == "IMDb"
+    else _to_float(fav.get("rt", 0)) if _current_sort == "RT"
+    else _to_int(fav.get("cineselectRating", 0)) if _current_sort == "CineSelect"
+    else _to_int(fav.get("year", 0)) if _current_sort == "Year"
     else 0
 ), reverse=(_current_sort != "CineSelect"))
 _shows_sorted  = sorted(_shows_all, key=lambda fav: (
-    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
-    else float(fav.get("rt", 0)) if _current_sort == "RT"
-    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
-    else int(fav.get("year", 0)) if _current_sort == "Year"
+    _to_float(fav.get("imdbRating", 0)) if _current_sort == "IMDb"
+    else _to_float(fav.get("rt", 0)) if _current_sort == "RT"
+    else _to_int(fav.get("cineselectRating", 0)) if _current_sort == "CineSelect"
+    else _to_int(fav.get("year", 0)) if _current_sort == "Year"
     else 0
 ), reverse=(_current_sort != "CineSelect"))
 
@@ -826,39 +837,23 @@ def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
         if sort_name == "IMDb":
-            return float(fav.get("imdbRating", 0) or 0)
+            return _to_float(fav.get("imdbRating", 0), 0.0)
         elif sort_name == "RT":
-            return float(fav.get("rt", 0) or 0)
+            return _to_float(fav.get("rt", 0), 0.0)
         elif sort_name == "CineSelect":
             # CineSelect ASCENDING; tie-breaks: IMDb DESC, then Year DESC
-            try:
-                cs = int(fav.get("cineselectRating", 0) or 0)
-            except Exception:
-                cs = 0
-            try:
-                imdb = float(fav.get("imdbRating", 0) or 0)
-            except Exception:
-                imdb = 0.0
-            try:
-                year = int(str(fav.get("year", 0)) or 0)
-            except Exception:
-                year = 0
-            # reverse=False at caller -> ascending by cs, but IMDb/Year need to be DESC -> negate them
+            cs = _to_int(fav.get("cineselectRating", 0), 0)
+            imdb = _to_float(fav.get("imdbRating", 0), 0.0)
+            year = _to_int(fav.get("year", 0), 0)
             return (cs, -imdb, -year)
         elif sort_name == "Year":
-            return int(fav.get("year", 0) or 0)
+            return _to_int(fav.get("year", 0), 0)
     except Exception:
         # Robust fallback key
         if sort_name == "CineSelect":
-            _cs = int(fav.get("cineselectRating", 0) or 0)
-            try:
-                _imdb = float(fav.get("imdbRating", 0) or 0)
-            except Exception:
-                _imdb = 0.0
-            try:
-                _year = int(str(fav.get("year", 0)) or 0)
-            except Exception:
-                _year = 0
+            _cs = _to_int(fav.get("cineselectRating", 0), 0)
+            _imdb = _to_float(fav.get("imdbRating", 0), 0.0)
+            _year = _to_int(fav.get("year", 0), 0)
             return (_cs, -_imdb, -_year)
         return 0
 
