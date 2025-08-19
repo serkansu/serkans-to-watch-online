@@ -473,9 +473,19 @@ def _fetch_favs_cached(kind: str, limit: int = 500) -> list[dict]:
             backoff = min(backoff * 2, 30.0)
 
 def sync_with_firebase(sort_mode="cc"):
+    # Always try to use in‑memory lists; if empty, refresh from Firestore cache helper
+    movies_ss = list(st.session_state.get("favorite_movies", []))
+    shows_ss  = list(st.session_state.get("favorite_series", []))
+    if not movies_ss or not shows_ss:
+        try:
+            movies_ss = _fetch_favs_cached("movie", limit=500)
+            shows_ss  = _fetch_favs_cached("show",  limit=500)
+        except Exception:
+            pass
+
     favorites_data = {
-        "movies": st.session_state.get("favorite_movies", []),
-        "shows": st.session_state.get("favorite_series", [])
+        "movies": movies_ss,
+        "shows": shows_ss
     }
     fix_invalid_imdb_ids(favorites_data)  # IMDb puanı olanları temizle
         # IMDb düzeltmesinden sonra type alanını normalize et
@@ -604,8 +614,19 @@ with col2:
         st.session_state["sync_sort_mode"] = "cc"
 
     if st.button("📂 JSON & CSV Sync"):
-        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
-        st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
+        # Force a fresh pull from Firestore cache helper just before exporting
+        try:
+            st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
+            st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
+        except Exception:
+            pass
+
+        # Guard: do not overwrite JSON with empty arrays if fetch failed
+        if not st.session_state.get("favorite_movies") and not st.session_state.get("favorite_series"):
+            st.error("❌ Firestore'dan liste okunamadı (boş döndü). Tekrar deneyin ya da 'Yenile'ye basın.")
+        else:
+            sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
+            st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
     st.radio(
