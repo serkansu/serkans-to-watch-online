@@ -830,17 +830,36 @@ def get_sort_key(fav):
         elif sort_name == "RT":
             return float(fav.get("rt", 0) or 0)
         elif sort_name == "CineSelect":
-            # CineSelect ASCENDING; tie-break by IMDb DESC
-            cs = int(fav.get("cineselectRating", 0) or 0)
-            imdb = float(fav.get("imdbRating", 0) or 0)
-            # For reverse=False later, return (cs asc, -imdb asc == imdb desc)
-            return (cs, -imdb)
+            # CineSelect ASCENDING; tie-breaks: IMDb DESC, then Year DESC
+            try:
+                cs = int(fav.get("cineselectRating", 0) or 0)
+            except Exception:
+                cs = 0
+            try:
+                imdb = float(fav.get("imdbRating", 0) or 0)
+            except Exception:
+                imdb = 0.0
+            try:
+                year = int(str(fav.get("year", 0)) or 0)
+            except Exception:
+                year = 0
+            # reverse=False at caller -> ascending by cs, but IMDb/Year need to be DESC -> negate them
+            return (cs, -imdb, -year)
         elif sort_name == "Year":
             return int(fav.get("year", 0) or 0)
     except Exception:
         # Robust fallback key
         if sort_name == "CineSelect":
-            return (int(fav.get("cineselectRating", 0) or 0), -float(fav.get("imdbRating", 0) or 0))
+            _cs = int(fav.get("cineselectRating", 0) or 0)
+            try:
+                _imdb = float(fav.get("imdbRating", 0) or 0)
+            except Exception:
+                _imdb = 0.0
+            try:
+                _year = int(str(fav.get("year", 0)) or 0)
+            except Exception:
+                _year = 0
+            return (_cs, -_imdb, -_year)
         return 0
 
 def show_favorites(fav_type, label):
