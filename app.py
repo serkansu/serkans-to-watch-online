@@ -13,6 +13,9 @@ import time
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
 
+# Inserted import for google.api_core exceptions (for Firestore backoff)
+from google.api_core import exceptions as gexc
+
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 class _EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -435,7 +438,39 @@ def ensure_authenticated():
         else:
             st.error("Yanlış şifre. Tekrar deneyin.")
     st.stop()
+
 # --- /auth gate ---
+
+# --- Cached Firestore fetch helper with backoff ---
+@st.cache_data(show_spinner=False, ttl=60)
+def _fetch_favs_cached(kind: str, limit: int = 500) -> list[dict]:
+    """
+    Cached/backoff'lu Firestore okuma:
+    - Sadece gerekli alanları seçer (read cost düşer)
+    - addedAt'e göre sıralar, limit uygular
+    - 429/timeout durumlarında exponential backoff ile tekrar dener
+    """
+    q = (
+        db.collection("favorites")
+          .where("type", "==", kind)
+          .select([
+              "id", "title", "year", "imdb", "poster",
+              "imdbRating", "rt", "cineselectRating", "type", "addedAt"
+          ])
+          .order_by("addedAt", direction=firestore.Query.DESCENDING)
+          .limit(limit)
+    )
+    backoff = 1.0
+    attempts = 0
+    while True:
+        try:
+            return [doc.to_dict() for doc in q.stream()]
+        except (gexc.ResourceExhausted, gexc.DeadlineExceeded, gexc.Aborted):
+            attempts += 1
+            if attempts >= 5:
+                raise
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)
 
 def sync_with_firebase(sort_mode="cc"):
     favorites_data = {
@@ -516,12 +551,23 @@ st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", 
 ensure_authenticated()
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
+# Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
-series_docs = db.collection("favorites").where("type", "==", "show").stream()
 
-st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
-st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
+# Manuel yenile butonu ve cache temizleme
+col_refresh, _ = st.columns([1, 5])
+with col_refresh:
+    if st.button("🔄 Yenile"):
+        _fetch_favs_cached.clear()
+
+# Güvenli/cached okuma + kota/timeout yakalama
+try:
+    st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
+    st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
+except Exception:
+    st.warning("⚠️ Firestore okuma kotası aşıldı veya zaman aşımı oldu. Ekranda en son veriler gösteriliyor.")
+    st.session_state.setdefault("favorite_movies", st.session_state.get("favorite_movies", []))
+    st.session_state.setdefault("favorite_series", st.session_state.get("favorite_series", []))
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
