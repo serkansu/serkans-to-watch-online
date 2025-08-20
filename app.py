@@ -13,9 +13,6 @@ import time
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
 
-# Inserted import for google.api_core exceptions (for Firestore backoff)
-from google.api_core import exceptions as gexc
-
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 class _EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -37,18 +34,6 @@ def _strip_non_export_fields(item: dict) -> dict:
 # --- helpers: normalize title for equality checks ---
 def _norm_title(t: str) -> str:
     return (t or "").strip().lower()
-
-def _to_int(v, default=0):
-    try:
-        return int(str(v).strip())
-    except Exception:
-        return default
-
-def _to_float(v, default=0.0):
-    try:
-        return float(str(v).strip())
-    except Exception:
-        return default
 # ---------- Sorting helpers for Streamio export ----------
 ROMAN_MAP = {
     "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
@@ -326,30 +311,11 @@ def fix_invalid_imdb_ids(data):
                 item["imdb"] = ""
 
 def sort_flat_for_export(items, mode):
-    """Sort a flat media list by the selected mode.
-    modes:
-      - 'cc'   : CineSelect ASC (ties -> IMDb DESC, then Year DESC)
-      - 'imdb' : IMDb DESC
-      - 'year' : Year DESC
+    """Sort a flat media list by selected mode in descending order.
+    mode: 'imdb' | 'cc' | 'year'
     """
     def key_fn(it):
-        if mode == "cc":
-            # CineSelect: ascending; tie-break IMDb (desc), then year (desc)
-            try:
-                cs = int(it.get("cineselectRating") or 0)
-            except Exception:
-                cs = 0
-            try:
-                imdb = float(it.get("imdbRating") or 0)
-            except Exception:
-                imdb = 0.0
-            try:
-                year = int(str(it.get("year", "0")).strip() or 0)
-            except Exception:
-                year = 0
-            # For reverse=False below, negate tie-breakers we want in DESC order
-            return (cs, -imdb, -year)
-        elif mode == "imdb":
+        if mode == "imdb":
             v = it.get("imdbRating")
             try:
                 return float(v) if v not in (None, "", "N/A") else -1
@@ -360,22 +326,11 @@ def sort_flat_for_export(items, mode):
                 return int(str(it.get("year", "0")).strip() or 0)
             except Exception:
                 return 0
-        # default -> behave like 'cc'
+        # default: CineSelect score
         try:
-            cs = int(it.get("cineselectRating") or 0)
+            return int(it.get("cineselectRating") or 0)
         except Exception:
-            cs = 0
-        try:
-            imdb = float(it.get("imdbRating") or 0)
-        except Exception:
-            imdb = 0.0
-        try:
-            year = int(str(it.get("year", "0")).strip() or 0)
-        except Exception:
-            year = 0
-        return (cs, -imdb, -year)
-
-    # cc -> ascending (reverse=False); imdb/year -> descending (reverse=True)
+            return 0
     return sorted(items or [], key=key_fn, reverse=(mode != "cc"))
 
 # ---------------------- CineSelect clamp & sync helpers ----------------------
@@ -438,78 +393,12 @@ def ensure_authenticated():
         else:
             st.error("Yanlış şifre. Tekrar deneyin.")
     st.stop()
-
 # --- /auth gate ---
 
-# --- Cached Firestore fetch helper with backoff ---
-@st.cache_data(show_spinner=False, ttl=60)
-def _fetch_favs_cached(kind: str, limit: int = 500) -> list[dict]:
-    """
-    Cached/backoff'lu Firestore okuma:
-    - Sadece gerekli alanları seçer (read cost düşer)
-    - addedAt'e göre sıralar, limit uygular
-    - 429/timeout durumlarında exponential backoff ile tekrar dener
-    """
-    q = (
-        db.collection("favorites")
-          .where("type", "==", kind)
-          .select([
-              "id", "title", "year", "imdb", "poster",
-              "imdbRating", "rt", "cineselectRating", "type", "addedAt"
-          ])
-          .order_by("addedAt", direction=firestore.Query.DESCENDING)
-          .limit(limit)
-    )
-    backoff = 1.0
-    attempts = 0
-    while True:
-        try:
-            return [doc.to_dict() for doc in q.stream()]
-        except (gexc.ResourceExhausted, gexc.DeadlineExceeded, gexc.Aborted):
-            attempts += 1
-            if attempts >= 5:
-                raise
-            time.sleep(backoff)
-            backoff = min(backoff * 2, 30.0)
-
-# --- Local disk snapshot as offline fallback ---
-SNAP_PATH = Path(__file__).parent / "last_favorites_cache.json"
-
-def _load_local_snapshot() -> tuple[list[dict], list[dict]]:
-    """Read last successful favorites snapshot from disk (if any)."""
-    try:
-        if SNAP_PATH.exists():
-            data = json.loads(SNAP_PATH.read_text(encoding="utf-8"))
-            return list(data.get("movies", [])), list(data.get("series", []))
-    except Exception:
-        pass
-    return [], []
-
-def _save_local_snapshot(movies: list[dict], shows: list[dict]) -> None:
-    """Persist a snapshot of favorites to disk for offline export."""
-    try:
-        payload = {"movies": movies or [], "series": shows or []}
-        SNAP_PATH.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2, cls=_EnhancedJSONEncoder),
-            encoding="utf-8",
-        )
-    except Exception:
-        pass
-
-def sync_with_firebase(sort_mode="cc"):
-    # Always try to use in‑memory lists; if empty, refresh from Firestore cache helper
-    movies_ss = list(st.session_state.get("favorite_movies", []))
-    shows_ss  = list(st.session_state.get("favorite_series", []))
-    if not movies_ss or not shows_ss:
-        try:
-            movies_ss = _fetch_favs_cached("movie", limit=500)
-            shows_ss  = _fetch_favs_cached("show",  limit=500)
-        except Exception:
-            pass
-
+def sync_with_firebase(sort_mode="imdb"):
     favorites_data = {
-        "movies": movies_ss,
-        "shows": shows_ss
+        "movies": st.session_state.get("favorite_movies", []),
+        "shows": st.session_state.get("favorite_series", [])
     }
     fix_invalid_imdb_ids(favorites_data)  # IMDb puanı olanları temizle
         # IMDb düzeltmesinden sonra type alanını normalize et
@@ -572,7 +461,6 @@ def sync_with_firebase(sort_mode="cc"):
     }
     with open("favorites_stw.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
-        st.caption(f"Export counts → movies: {len(export_movies)} • series: {len(export_series)}")
         st.write("🔍 FAVORITES DEBUG (output):", output_data)
     st.success("✅ favorites_stw.json dosyası yerel olarak oluşturuldu.")
 
@@ -586,47 +474,12 @@ st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", 
 ensure_authenticated()
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
-# Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
+movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
+series_docs = db.collection("favorites").where("type", "==", "show").stream()
 
-# Manuel yenile butonu ve cache temizleme
-col_refresh, _ = st.columns([1, 5])
-with col_refresh:
-    if st.button("🔄 Yenile"):
-        _fetch_favs_cached.clear()
-        try:
-            # Pull fresh data right away and repopulate session state
-            st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
-            st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
-            # Record last refresh time (UTC)
-            st.session_state["_cache_updated_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-            st.success(f"🔁 Liste yenilendi • {st.session_state['_cache_updated_at']}")
-        except Exception:
-            st.warning("⚠️ Firestore okuma kotası/timeout. Biraz sonra tekrar deneyebilir ya da 'JSON & CSV Sync'i kullanabilirsin.")
-
-# Güvenli/cached okuma + kota/timeout yakalama
-try:
-    st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
-    st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
-    # Save a local snapshot for offline export
-    if st.session_state.get("favorite_movies") or st.session_state.get("favorite_series"):
-        _save_local_snapshot(st.session_state.get("favorite_movies", []),
-                             st.session_state.get("favorite_series", []))
-except Exception:
-    st.warning("⚠️ Firestore okuma kotası aşıldı veya zaman aşımı oldu. Ekranda en son veriler gösteriliyor.")
-    st.session_state.setdefault("favorite_movies", st.session_state.get("favorite_movies", []))
-    st.session_state.setdefault("favorite_series", st.session_state.get("favorite_series", []))
-    # Try to load from local snapshot to keep the UI/export usable
-    _m_snap, _s_snap = _load_local_snapshot()
-    if _m_snap or _s_snap:
-        st.info("📦 Firestore erişilemedi, yerel önbellekten son kaydı açtım (offline).")
-        st.session_state.setdefault("favorite_movies", _m_snap)
-        st.session_state.setdefault("favorite_series", _s_snap)
-
-# --- Show last cache refresh timestamp under the header ---
-_last_ts = st.session_state.get("_cache_updated_at")
-if _last_ts:
-    st.caption(f"🗓️ Son yenileme: {_last_ts} (UTC)")
+st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
+st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
@@ -663,29 +516,8 @@ with col2:
         st.session_state["sync_sort_mode"] = "cc"
 
     if st.button("📂 JSON & CSV Sync"):
-        # Force a fresh pull from Firestore cache helper just before exporting
-        try:
-            st.session_state["favorite_movies"]  = _fetch_favs_cached("movie", limit=500)
-            st.session_state["favorite_series"] = _fetch_favs_cached("show",  limit=500)
-        except Exception:
-            pass
-
-        # Guard: avoid overwriting JSON with empty arrays; try local snapshot fallback first
-        _movies_cur = st.session_state.get("favorite_movies") or []
-        _series_cur = st.session_state.get("favorite_series") or []
-        if not _movies_cur and not _series_cur:
-            snap_m, snap_s = _load_local_snapshot()
-            if snap_m or snap_s:
-                st.info("📦 Firestore boş döndü; yerel önbellekten senkronize ediyorum…")
-                st.session_state["favorite_movies"] = snap_m
-                st.session_state["favorite_series"] = snap_s
-                sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
-                st.success("✅ Yerel önbellekten favorites_stw.json ve seed_ratings.csv senkronize edildi.")
-            else:
-                st.error("❌ Firestore'dan liste okunamadı (boş döndü) ve yerel önbellek yok. Tekrar deneyin ya da 'Yenile'ye basın.")
-        else:
-            sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
-            st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
+        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
+        st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
     st.radio(
@@ -697,11 +529,11 @@ with col2:
     )
 
 def show_favorites_count():
-    movies = st.session_state.get("favorite_movies", []) or []
-    series = st.session_state.get("favorite_series", []) or []
+    movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
+    series_docs = db.collection("favorites").where("type", "==", "show").stream()
 
-    movie_count = sum(1 for x in movies if (str(x.get("type") or "")).lower() == "movie")
-    series_count = sum(1 for x in series if (str(x.get("type") or "")).lower() in ("show", "series"))
+    movie_count = len(list(movie_docs))
+    series_count = len(list(series_docs))
 
     st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
 if st.button("📊 Favori Sayılarını Göster"):
@@ -734,18 +566,19 @@ _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
 
+# Reuse existing sorting logic so positions match the list below
 _movies_sorted = sorted(_movies_all, key=lambda fav: (
-    _to_float(fav.get("imdbRating", 0)) if _current_sort == "IMDb"
-    else _to_float(fav.get("rt", 0)) if _current_sort == "RT"
-    else _to_int(fav.get("cineselectRating", 0)) if _current_sort == "CineSelect"
-    else _to_int(fav.get("year", 0)) if _current_sort == "Year"
+    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
+    else float(fav.get("rt", 0)) if _current_sort == "RT"
+    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
+    else int(fav.get("year", 0)) if _current_sort == "Year"
     else 0
 ), reverse=(_current_sort != "CineSelect"))
 _shows_sorted  = sorted(_shows_all, key=lambda fav: (
-    _to_float(fav.get("imdbRating", 0)) if _current_sort == "IMDb"
-    else _to_float(fav.get("rt", 0)) if _current_sort == "RT"
-    else _to_int(fav.get("cineselectRating", 0)) if _current_sort == "CineSelect"
-    else _to_int(fav.get("year", 0)) if _current_sort == "Year"
+    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
+    else float(fav.get("rt", 0)) if _current_sort == "RT"
+    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
+    else int(fav.get("year", 0)) if _current_sort == "Year"
     else 0
 ), reverse=(_current_sort != "CineSelect"))
 
@@ -963,40 +796,27 @@ def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
         if sort_name == "IMDb":
-            return _to_float(fav.get("imdbRating", 0), 0.0)
+            return float(fav.get("imdbRating", 0) or 0)
         elif sort_name == "RT":
-            return _to_float(fav.get("rt", 0), 0.0)
+            return float(fav.get("rt", 0) or 0)
         elif sort_name == "CineSelect":
-            # CineSelect ASCENDING; tie-breaks: IMDb DESC, then Year DESC
-            cs = _to_int(fav.get("cineselectRating", 0), 0)
-            imdb = _to_float(fav.get("imdbRating", 0), 0.0)
-            year = _to_int(fav.get("year", 0), 0)
-            return (cs, -imdb, -year)
+            # CineSelect ASCENDING; tie-break by IMDb DESC
+            cs = int(fav.get("cineselectRating", 0) or 0)
+            imdb = float(fav.get("imdbRating", 0) or 0)
+            # For reverse=False later, return (cs asc, -imdb asc == imdb desc)
+            return (cs, -imdb)
         elif sort_name == "Year":
-            return _to_int(fav.get("year", 0), 0)
+            return int(fav.get("year", 0) or 0)
     except Exception:
         # Robust fallback key
         if sort_name == "CineSelect":
-            _cs = _to_int(fav.get("cineselectRating", 0), 0)
-            _imdb = _to_float(fav.get("imdbRating", 0), 0.0)
-            _year = _to_int(fav.get("year", 0), 0)
-            return (_cs, -_imdb, -_year)
+            return (int(fav.get("cineselectRating", 0) or 0), -float(fav.get("imdbRating", 0) or 0))
         return 0
 
 def show_favorites(fav_type, label):
-    # Pull from session cache instead of hitting Firestore
-    all_movies = st.session_state.get("favorite_movies", []) or []
-    all_series = st.session_state.get("favorite_series", []) or []
-    base_list = all_movies if fav_type == "movie" else all_series
-
-    # Filter by requested type defensively
-    if fav_type == "movie":
-        favorites = [x for x in base_list if (str(x.get("type") or "")).lower() == "movie"]
-    else:
-        favorites = [x for x in base_list if (str(x.get("type") or "")).lower() in ("show", "series")]
-
+    docs = db.collection("favorites").where("type", "==", fav_type).stream()
     favorites = sorted(
-        favorites,
+        [doc.to_dict() for doc in docs],
         key=get_sort_key,
         reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
     )
@@ -1066,16 +886,19 @@ def show_favorites(fav_type, label):
                 if visible_cs:
                     base = min(visible_cs)
                 else:
-                    # Offline-only fallback without Firestore scan
-                    try:
-                        all_list = st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", [])
-                        pool = [
-                            int(x.get("cineselectRating") or 0)
-                            for x in (all_list or [])
-                            if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
-                        ]
-                        base = min(pool) if pool else 50
-                    except Exception:
+                    # Fallback: scan Firestore
+                    base = None
+                    for d in db.collection("favorites").where("type", "==", fav_type).stream():
+                        raw = (d.to_dict() or {}).get("cineselectRating")
+                        try:
+                            cs = int(raw)
+                        except Exception:
+                            continue
+                        if cs <= 0:
+                            continue
+                        if base is None or cs < base:
+                            base = cs
+                    if base is None:
                         base = 50
 
                 pin_val = max(1, int(base) - 1)  # never below 1
