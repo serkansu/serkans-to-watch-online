@@ -311,11 +311,30 @@ def fix_invalid_imdb_ids(data):
                 item["imdb"] = ""
 
 def sort_flat_for_export(items, mode):
-    """Sort a flat media list by selected mode in descending order.
-    mode: 'imdb' | 'cc' | 'year'
+    """Sort a flat media list by the selected mode.
+    modes:
+      - 'cc'   : CineSelect ASC (ties -> IMDb DESC, then Year DESC)
+      - 'imdb' : IMDb DESC
+      - 'year' : Year DESC
     """
     def key_fn(it):
-        if mode == "imdb":
+        if mode == "cc":
+            # CineSelect: ascending; tie-break IMDb (desc), then year (desc)
+            try:
+                cs = int(it.get("cineselectRating") or 0)
+            except Exception:
+                cs = 0
+            try:
+                imdb = float(it.get("imdbRating") or 0)
+            except Exception:
+                imdb = 0.0
+            try:
+                year = int(str(it.get("year", "0")).strip() or 0)
+            except Exception:
+                year = 0
+            # For reverse=False (see return), negate tie-breakers we want in DESC order
+            return (cs, -imdb, -year)
+        elif mode == "imdb":
             v = it.get("imdbRating")
             try:
                 return float(v) if v not in (None, "", "N/A") else -1
@@ -326,11 +345,22 @@ def sort_flat_for_export(items, mode):
                 return int(str(it.get("year", "0")).strip() or 0)
             except Exception:
                 return 0
-        # default: CineSelect score
+        # default -> behave like 'cc'
         try:
-            return int(it.get("cineselectRating") or 0)
+            cs = int(it.get("cineselectRating") or 0)
         except Exception:
-            return 0
+            cs = 0
+        try:
+            imdb = float(it.get("imdbRating") or 0)
+        except Exception:
+            imdb = 0.0
+        try:
+            year = int(str(it.get("year", "0")).strip() or 0)
+        except Exception:
+            year = 0
+        return (cs, -imdb, -year)
+
+    # cc -> ascending (reverse=False); imdb/year -> descending (reverse=True)
     return sorted(items or [], key=key_fn, reverse=(mode != "cc"))
 
 # ---------------------- CineSelect clamp & sync helpers ----------------------
@@ -516,7 +546,7 @@ with col2:
         st.session_state["sync_sort_mode"] = "cc"
 
     if st.button("📂 JSON & CSV Sync"):
-        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "imdb"))
+        sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
         st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
 
     # Butonun ALTINA üç radyo butonu (imdb, cc, year)
