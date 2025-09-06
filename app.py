@@ -1798,7 +1798,7 @@ elif fav_section == "🖤 Blacklist":
                         st.rerun()
                 # --- Edit CineSelect rating button ---
                 if st.button("✏️", key=f"edit_bl_{fav['id']}"):
-                    st.session_state[f"edit_mode_bl_{fav['id']}"] = True
+                    _safe_set_state(f"edit_mode_bl_{fav['id']}", True)
                 # --- Refresh IMDb/RT ratings button ---
                 if st.button("🔄 Refresh", key=f"refresh_bl_{fav['id']}"):
                     imdb_id = fav.get("imdb")
@@ -1817,7 +1817,7 @@ elif fav_section == "🖤 Blacklist":
                     i_key = f"input_bl_{fav['id']}"
                     current = _clamp_cs(fav.get("cineselectRating", 50))
                     if i_key not in st.session_state:
-                        st.session_state[i_key] = current
+                        _safe_set_state(i_key, current)
                     st.number_input(
                         "🎯 CS:",
                         min_value=1,
@@ -1845,7 +1845,7 @@ elif fav_section == "🖤 Blacklist":
                             "blacklistedAt": blacklistedAt_str
                         })
                         st.success(f"✅ {fav.get('title','?')} güncellendi (CS={new_val} 🖤, Blacklist tarihi: {blacklistedAt_str}).")
-                        st.session_state[f"edit_mode_bl_{fav['id']}"] = False
+                        _safe_set_state(f"edit_mode_bl_{fav['id']}", False)
                         st.rerun()
 
 st.markdown("---")
