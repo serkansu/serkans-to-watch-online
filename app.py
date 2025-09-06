@@ -1153,11 +1153,22 @@ elif fav_section == "🎬 İzlenenler":
             comment_key = f"comment_{fav['id']}"
             comments = fav.get("comments", [])
             if comments:
-                for c in comments:
+                for idx, c in enumerate(comments):
                     text = c.get("text", "")
                     who = c.get("watchedBy", "")
                     date = c.get("date", "")
-                    st.markdown(f"💬 {text} — ({who}) • {date}")
+
+                    col_comment, col_delete = st.columns([8, 1])
+                    with col_comment:
+                        st.markdown(f"💬 {text} — ({who}) • {date}")
+                    with col_delete:
+                        if st.button("🗑️", key=f"del_comment_{fav['id']}_{idx}"):
+                            new_comments = [x for j, x in enumerate(comments) if j != idx]
+                            db.collection("favorites").document(fav["id"]).update({
+                                "comments": new_comments
+                            })
+                            st.success("🗑️ Yorum silindi!")
+                            st.rerun()
 
             # New comment input: text_area and watchedBy selectbox (no dependency on fav.get("watchedBy"))
             input_cols = st.columns([3, 2])
@@ -1194,7 +1205,7 @@ elif fav_section == "🎬 İzlenenler":
                     db.collection("favorites").document(fav["id"]).update({
                         "comments": new_comments
                     })
-                    st.session_state[comment_key] = ""
+                    _safe_set_state(comment_key, "")
                     st.success("💬 Yorum kaydedildi!")
                     st.rerun()
         with cols[2]:
