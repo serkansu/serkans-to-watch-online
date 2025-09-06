@@ -388,6 +388,19 @@ def load_favorites():
     db = get_firestore()
     movies = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "movie").stream()]
     shows  = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "show").stream()]
+    # Normalize type for all items (movie/show) according to rules
+    for item in movies:
+        t = (item.get("type") or "").lower()
+        if t in ["tv", "tvshow", "show", "series"]:
+            item["type"] = "show"
+        elif t in ["movie", "film"]:
+            item["type"] = "movie"
+    for item in shows:
+        t = (item.get("type") or "").lower()
+        if t in ["tv", "tvshow", "show", "series"]:
+            item["type"] = "show"
+        elif t in ["movie", "film"]:
+            item["type"] = "movie"
     return movies, shows
 def fix_invalid_imdb_ids(data):
     for section in ["movies", "shows"]:
@@ -516,10 +529,10 @@ def sync_with_firebase(sort_mode="imdb"):
         "shows": st.session_state.get("favorite_series", [])
     }
     fix_invalid_imdb_ids(favorites_data)  # IMDb puanı olanları temizle
-        # IMDb düzeltmesinden sonra type alanını normalize et
+    # Normalize type after IMDb correction
     for section in ["movies", "shows"]:
         for item in favorites_data[section]:
-            t = item.get("type", "").lower()
+            t = (item.get("type") or "").lower()
             if t in ["tv", "tvshow", "show", "series"]:
                 item["type"] = "show"
             elif t in ["movie", "film"]:
