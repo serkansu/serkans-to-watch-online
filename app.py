@@ -925,50 +925,42 @@ def show_favorites(fav_type, label):
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
         with cols[2]:
-            # --- Status selectbox ---
-            status_options = [
-                "to_watch",
-                "watched (öz)",
-                "watched (ss)",
-                "watched (öz❤️ss)"
-            ]
-            # Compute current status string
-            if fav.get("status") == "to_watch":
-                current_status_str = "to_watch"
+        # --- Status selectbox (short labels) ---
+        status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w"]
+        # Compute current status string with new logic
+        if fav.get("status") == "to_watch":
+            current_status_str = "to_watch"
+        elif fav.get("status") == "watched":
+            wb = fav.get("watchedBy")
+            if wb in ["öz", "ss", "öz❤️ss"]:
+                current_status_str = wb
             else:
-                wb = fav.get("watchedBy") or ""
-                if wb:
-                    current_status_str = f"watched ({wb})"
-                else:
-                    current_status_str = "watched ()"
-            status_select = st.selectbox(
-                "Durum",
-                status_options,
-                index=status_options.index(current_status_str) if current_status_str in status_options else 0,
-                key=f"status_{fav['id']}"
-            )
-            # Update Firestore if status changed
-            if status_select != current_status_str:
-                doc_ref = db.collection("favorites").document(fav["id"])
-                if status_select == "to_watch":
-                    doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None})
-                    st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
-                    st.rerun()
-                else:
-                    # Extract person string from "watched (xxx)"
-                    from datetime import datetime
-                    if "öz❤️ss" in status_select:
-                        person = "öz❤️ss"
-                    elif "öz" in status_select:
-                        person = "öz"
-                    elif "ss" in status_select:
-                        person = "ss"
-                    else:
-                        person = ""
-                    now_str = format_turkish_datetime(datetime.now())
-                    doc_ref.update({"status": "watched", "watchedBy": person, "watchedAt": now_str})
-                    st.success(f"✅ {fav['title']} durumu güncellendi: watched ({person})")
-                    st.rerun()
+                current_status_str = "n/w"
+        else:
+            current_status_str = "to_watch"
+        status_select = st.selectbox(
+            "Watched by",
+            status_options,
+            index=status_options.index(current_status_str) if current_status_str in status_options else 0,
+            key=f"status_{fav['id']}"
+        )
+        # Update Firestore if status changed
+        if status_select != current_status_str:
+            doc_ref = db.collection("favorites").document(fav["id"])
+            from datetime import datetime
+            if status_select == "to_watch":
+                doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None})
+                st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
+                st.rerun()
+            elif status_select == "n/w":
+                doc_ref.update({"status": "watched", "watchedBy": None, "watchedAt": None})
+                st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
+                st.rerun()
+            else:
+                now_str = format_turkish_datetime(datetime.now())
+                doc_ref.update({"status": "watched", "watchedBy": status_select, "watchedAt": now_str})
+                st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
+                st.rerun()
         with cols[3]:
             if st.button("✏️", key=f"edit_{fav['id']}"):
                 st.session_state[f"edit_mode_{fav['id']}"] = True
@@ -1078,19 +1070,34 @@ for idx, fav in enumerate(watched_items, start=1):
     with cols[1]:
         st.markdown(f"**{idx}. {fav.get('title')} ({fav.get('year')})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}")
     with cols[2]:
-        status_options = ["to_watch","watched (öz)","watched (ss)","watched (öz❤️ss)"]
-        wb = fav.get("watchedBy") or ""
-        current_status_str = f"watched ({wb})" if fav.get("status")=="watched" and wb else "to_watch"
-        status_select = st.selectbox("Durum", status_options, index=status_options.index(current_status_str) if current_status_str in status_options else 0, key=f"watched_status_{fav['id']}")
+        status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w"]
+        if fav.get("status") == "to_watch":
+            current_status_str = "to_watch"
+        elif fav.get("status") == "watched":
+            wb = fav.get("watchedBy")
+            if wb in ["öz", "ss", "öz❤️ss"]:
+                current_status_str = wb
+            else:
+                current_status_str = "n/w"
+        else:
+            current_status_str = "to_watch"
+        status_select = st.selectbox("Watched by", status_options, index=status_options.index(current_status_str) if current_status_str in status_options else 0, key=f"watched_status_{fav['id']}")
+        from datetime import datetime
         if status_select != current_status_str:
             doc_ref = db.collection("favorites").document(fav["id"])
-            if status_select=="to_watch":
-                doc_ref.update({"status":"to_watch","watchedBy":None,"watchedAt":None})
+            if status_select == "to_watch":
+                doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None})
+                st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
+                st.rerun()
+            elif status_select == "n/w":
+                doc_ref.update({"status": "watched", "watchedBy": None, "watchedAt": None})
+                st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
+                st.rerun()
             else:
-                who = status_select.replace("watched (","").replace(")","")
                 now_str = format_turkish_datetime(datetime.now())
-                doc_ref.update({"status":"watched","watchedBy":who,"watchedAt":now_str})
-            st.rerun()
+                doc_ref.update({"status": "watched", "watchedBy": status_select, "watchedAt": now_str})
+                st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
+                st.rerun()
 
 st.markdown("---")
 if st.button("🔝 Go to Top Again"):
