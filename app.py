@@ -1038,13 +1038,11 @@ def show_favorites(fav_type, label):
                 comment_who_key = f"fav_new_comment_who_{fav['id']}"
                 if cs_prompt_needed:
                     with st.expander("💬 Yorum / Onay"):
-                        if cs_number_key not in st.session_state:
-                            _safe_set_state(cs_number_key, int(cs_val) if isinstance(cs_val, int) else 50)
                         cs_val_new = st.number_input(
                             "CineSelect Puanı (1-100)",
                             min_value=1,
                             max_value=100,
-                            value=st.session_state[cs_number_key],
+                            value=int(fav.get("cineselectRating", 50)),
                             step=1,
                             key=cs_number_key
                         )
@@ -1398,13 +1396,11 @@ elif fav_section == "🎬 İzlenenler":
                 comment_who_key = f"watched_new_comment_who_{fav['id']}"
                 if cs_prompt_needed:
                     with st.expander("💬 Yorum / Onay"):
-                        if cs_number_key not in st.session_state:
-                            _safe_set_state(cs_number_key, int(cs_val) if isinstance(cs_val, int) else 50)
                         cs_val_new = st.number_input(
                             "CineSelect Puanı (1-100)",
                             min_value=1,
                             max_value=100,
-                            value=st.session_state[cs_number_key],
+                            value=int(fav.get("cineselectRating", 50)),
                             step=1,
                             key=cs_number_key
                         )
@@ -1672,13 +1668,11 @@ elif fav_section == "🖤 Blacklist":
                 comment_who_key = f"bl_new_comment_who_{fav['id']}"
                 if cs_prompt_needed:
                     with st.expander("💬 Yorum / Onay"):
-                        if cs_number_key not in st.session_state:
-                            _safe_set_state(cs_number_key, int(cs_val) if isinstance(cs_val, int) else 50)
                         cs_val_new = st.number_input(
                             "CineSelect Puanı (1-100)",
                             min_value=1,
                             max_value=100,
-                            value=st.session_state[cs_number_key],
+                            value=int(fav.get("cineselectRating", 50)),
                             step=1,
                             key=cs_number_key
                         )
