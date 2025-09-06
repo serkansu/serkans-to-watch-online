@@ -938,17 +938,17 @@ def get_sort_key(fav):
         elif sort_name == "RT":
             return float(fav.get("rt", 0) or 0)
         elif sort_name == "CineSelect":
-            # CineSelect ASCENDING; tie-break by IMDb DESC
+            # CineSelect DESCENDING; tie-break by IMDb ASC
             cs = int(fav.get("cineselectRating", 0) or 0)
             imdb = float(fav.get("imdbRating", 0) or 0)
-            # For reverse=False later, return (cs asc, -imdb asc == imdb desc)
-            return (cs, -imdb)
+            # For reverse=True, return (-cs, imdb) so higher CS sorts first
+            return (-cs, imdb)
         elif sort_name == "Year":
             return int(fav.get("year", 0) or 0)
     except Exception:
         # Robust fallback key
         if sort_name == "CineSelect":
-            return (int(fav.get("cineselectRating", 0) or 0), -float(fav.get("imdbRating", 0) or 0))
+            return (-int(fav.get("cineselectRating", 0) or 0), float(fav.get("imdbRating", 0) or 0))
         return 0
 
 def show_favorites(fav_type, label):
@@ -957,7 +957,7 @@ def show_favorites(fav_type, label):
     favorites = sorted(
         [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") in (None, "", "to_watch")],
         key=get_sort_key,
-        reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
+        reverse=True
     )
 
     st.markdown(f"### 📁 {label}")
@@ -1081,7 +1081,7 @@ def show_favorites(fav_type, label):
                     })
                     st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
                     # Clear the comment field after successful submission
-                    st.session_state[comment_text_key] = ""
+                    _safe_set_state(comment_text_key, "")
                     st.rerun()
             elif status_select != current_status_str:
                 doc_ref = db.collection("favorites").document(fav["id"])
