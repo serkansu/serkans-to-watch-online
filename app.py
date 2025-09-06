@@ -10,6 +10,8 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+import locale
+locale.setlocale(locale.LC_TIME, "tr_TR.UTF-8")
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
 
@@ -304,6 +306,14 @@ def push_favorites_to_github():
             st.success(f"✅ Push OK: {file_path} → {repo_owner}/{repo_name}")
 import streamlit as st
 from firebase_setup import get_firestore
+
+# --- Cached Firestore favorites loader ---
+@st.cache_data(ttl=60)  # Cache Firestore favorites for 60 seconds
+def load_favorites():
+    db = get_firestore()
+    movies = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "movie").stream()]
+    shows  = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "show").stream()]
+    return movies, shows
 def fix_invalid_imdb_ids(data):
     for section in ["movies", "shows"]:
         for item in data[section]:
@@ -476,9 +486,13 @@ def sync_with_firebase(sort_mode="imdb"):
                 imdb_rating=_it.get("imdbRating"),
                 rt_score=_it.get("rt"),
             )
+    # ---- Filter out watched items (only export "to_watch" items)
+    movies_to_export = [x for x in favorites_data.get("movies", []) if x.get("status") == "to_watch"]
+    shows_to_export = [x for x in favorites_data.get("shows", []) if x.get("status") == "to_watch"]
+
     # ---- Apply export ordering
-    sorted_movies = sort_flat_for_export(favorites_data.get("movies", []), sort_mode)
-    sorted_series = sort_flat_for_export(favorites_data.get("shows", []), sort_mode)
+    sorted_movies = sort_flat_for_export(movies_to_export, sort_mode)
+    sorted_series = sort_flat_for_export(shows_to_export, sort_mode)
 
     # Remove Firestore-only fields and ensure JSON-serializable types (timestamps -> ISO strings)
     export_movies = [_strip_non_export_fields(x) for x in sorted_movies]
@@ -505,11 +519,9 @@ ensure_authenticated()
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
-series_docs = db.collection("favorites").where("type", "==", "show").stream()
-
-st.session_state["favorite_movies"] = [doc.to_dict() for doc in movie_docs]
-st.session_state["favorite_series"] = [doc.to_dict() for doc in series_docs]
+movies, shows = load_favorites()
+st.session_state["favorite_movies"] = movies
+st.session_state["favorite_series"] = shows
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
@@ -882,9 +894,51 @@ def show_favorites(fav_type, label):
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
         with cols[2]:
-            if st.button("❌", key=f"remove_{fav['id']}"):
-                db.collection("favorites").document(fav["id"]).delete()
-                st.rerun()
+            # --- Status selectbox ---
+            status_options = [
+                "to_watch",
+                "watched (öz)",
+                "watched (ss)",
+                "watched (öz❤️ss)"
+            ]
+            # Compute current status string
+            if fav.get("status") == "to_watch":
+                current_status_str = "to_watch"
+            else:
+                wb = fav.get("watchedBy") or ""
+                if wb:
+                    current_status_str = f"watched ({wb})"
+                else:
+                    current_status_str = "watched ()"
+            status_select = st.selectbox(
+                "Durum",
+                status_options,
+                index=status_options.index(current_status_str) if current_status_str in status_options else 0,
+                key=f"status_{fav['id']}"
+            )
+            # Update Firestore if status changed
+            if status_select != current_status_str:
+                doc_ref = db.collection("favorites").document(fav["id"])
+                if status_select == "to_watch":
+                    doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None})
+                    st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
+                    st.rerun()
+                else:
+                    # Extract person string from "watched (xxx)"
+                    import locale
+                    from datetime import datetime
+                    if "öz❤️ss" in status_select:
+                        person = "öz❤️ss"
+                    elif "öz" in status_select:
+                        person = "öz"
+                    elif "ss" in status_select:
+                        person = "ss"
+                    else:
+                        person = ""
+                    now_str = datetime.now().strftime("%d %B %Y %A %H:%M")
+                    doc_ref.update({"status": "watched", "watchedBy": person, "watchedAt": now_str})
+                    st.success(f"✅ {fav['title']} durumu güncellendi: watched ({person})")
+                    st.rerun()
         with cols[3]:
             if st.button("✏️", key=f"edit_{fav['id']}"):
                 st.session_state[f"edit_mode_{fav['id']}"] = True
@@ -962,6 +1016,51 @@ if media_type == "Movie":
     show_favorites("movie", "Filmler")
 elif media_type == "TV Show":
     show_favorites("show", "Diziler")
+
+# --- Watched Items Section ---
+st.markdown("---")
+st.subheader("🎬 İzlenenler")
+
+watched_docs = db.collection("favorites").where("status", "==", "watched").stream()
+watched_items = [doc.to_dict() for doc in watched_docs]
+
+for idx, fav in enumerate(watched_items, start=1):
+    imdb_display = f"{float(fav.get('imdbRating', 0) or 0):.1f}" if fav.get('imdbRating') else "N/A"
+    rt_val = fav.get("rt", 0)
+    try:
+        rt_num = int(float(rt_val)) if rt_val not in (None, "", "N/A") else 0
+    except Exception:
+        rt_num = 0
+    rt_display = f"{rt_num}%" if rt_num > 0 else "N/A"
+
+    cols = st.columns([1,5,1])
+    with cols[0]:
+        if fav.get("poster"):
+            imdb_id_link = str(fav.get("imdb") or "").strip()
+            poster_url = fav["poster"]
+            if imdb_id_link.startswith("tt"):
+                st.markdown(
+                    f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank"><img src="{poster_url}" width="120"/></a>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.image(poster_url, width=120)
+    with cols[1]:
+        st.markdown(f"**{idx}. {fav.get('title')} ({fav.get('year')})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}")
+    with cols[2]:
+        status_options = ["to_watch","watched (öz)","watched (ss)","watched (öz❤️ss)"]
+        wb = fav.get("watchedBy") or ""
+        current_status_str = f"watched ({wb})" if fav.get("status")=="watched" and wb else "to_watch"
+        status_select = st.selectbox("Durum", status_options, index=status_options.index(current_status_str) if current_status_str in status_options else 0, key=f"watched_status_{fav['id']}")
+        if status_select != current_status_str:
+            doc_ref = db.collection("favorites").document(fav["id"])
+            if status_select=="to_watch":
+                doc_ref.update({"status":"to_watch","watchedBy":None,"watchedAt":None})
+            else:
+                who = status_select.replace("watched (","").replace(")","")
+                now_str = datetime.now().strftime("%d %B %Y %A %H:%M")
+                doc_ref.update({"status":"watched","watchedBy":who,"watchedAt":now_str})
+            st.rerun()
 
 st.markdown("---")
 if st.button("🔝 Go to Top Again"):
