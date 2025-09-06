@@ -37,8 +37,7 @@ TURKISH_DAYS = {
 
 # Helper to format datetime in Turkish (date only, no time)
 def format_turkish_datetime(dt):
-    s = dt.strftime("%d/%m/%y")
-    return s
+    return dt.strftime("%d/%m/%y")
 
 # --- Robust Turkish/ISO date parser ---
 from datetime import datetime as _DT
@@ -683,20 +682,8 @@ _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
 
 # Reuse existing sorting logic so positions match the list below
-_movies_sorted = sorted(_movies_all, key=lambda fav: (
-    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
-    else float(fav.get("rt", 0)) if _current_sort == "RT"
-    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
-    else int(fav.get("year", 0)) if _current_sort == "Year"
-    else 0
-), reverse=True
-_shows_sorted  = sorted(_shows_all, key=lambda fav: (
-    float(fav.get("imdbRating", 0) or 0) if _current_sort == "IMDb"
-    else float(fav.get("rt", 0)) if _current_sort == "RT"
-    else fav.get("cineselectRating", 0) if _current_sort == "CineSelect"
-    else int(fav.get("year", 0)) if _current_sort == "Year"
-    else 0
-), reverse=(_current_sort != "CineSelect"))
+_movies_sorted = sorted(_movies_all, key=get_sort_key, reverse=True)
+_shows_sorted  = sorted(_shows_all, key=get_sort_key, reverse=True)
 
 # Maps like "title::year" -> (favorite_dict, position)
 _movies_idx = {}
@@ -1251,20 +1238,8 @@ elif fav_section == "🎬 İzlenenler":
             comment_key = f"comment_{fav['id']}"
             comments = fav.get("comments", [])
             # --- Sort comments by date descending before displaying ---
-            from datetime import datetime as _dt
-            def _parse_comment_date(d):
-                if not d:
-                    return _dt.min
-                s = str(d)
-                for eng, tr in TURKISH_MONTHS.items():
-                    s = s.replace(tr, eng)
-                for eng, tr in TURKISH_DAYS.items():
-                    s = s.replace(tr, eng)
-                try:
-                    return _dt.strptime(s, "%d %B %Y %A")
-                except Exception:
-                    return _dt.min
-            comments_sorted = sorted(comments, key=lambda c: _parse_comment_date(c.get("date")), reverse=True)
+        from datetime import datetime as _dt
+        comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
             if comments_sorted:
                 for c_idx, c in enumerate(comments_sorted):
                     text = c.get("text", "")
@@ -1623,19 +1598,7 @@ elif fav_section == "🖤 Blacklist":
             # --- Comments Section (copy of watched) ---
             comment_key = f"bl_comment_{fav['id']}"
             comments = fav.get("comments", [])
-            def _parse_comment_date_bl(d):
-                if not d:
-                    return _dt.min
-                s = str(d)
-                for eng, tr in TURKISH_MONTHS.items():
-                    s = s.replace(tr, eng)
-                for eng, tr in TURKISH_DAYS.items():
-                    s = s.replace(tr, eng)
-                try:
-                    return _dt.strptime(s, "%d %B %Y %A")
-                except Exception:
-                    return _dt.min
-            comments_sorted = sorted(comments, key=lambda c: _parse_comment_date_bl(c.get("date")), reverse=True)
+            comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
             if comments_sorted:
                 for c_idx, c in enumerate(comments_sorted):
                     text = c.get("text", "")
@@ -1752,21 +1715,21 @@ elif fav_section == "🖤 Blacklist":
                 comment_text_key = f"bl_new_comment_{fav['id']}"
                 comment_who_key = f"bl_new_comment_who_{fav['id']}"
                 if cs_prompt_needed:
-                    if cs_number_key not in st.session_state:
-                        st.session_state[cs_number_key] = int(cs_val) if isinstance(cs_val, int) else 50
-                    cs_val_new = st.number_input(
-                        "CineSelect Puanı (1-100)",
-                        min_value=1,
-                        max_value=100,
-                        value=st.session_state[cs_number_key],
-                        step=1,
-                        key=cs_number_key
-                    )
-                    if comment_text_key not in st.session_state:
-                        _safe_set_state(comment_text_key, "")
-                    if comment_who_key not in st.session_state:
-                        st.session_state[comment_who_key] = "öz"
                     with st.expander("💬 Yorum / Onay"):
+                        if cs_number_key not in st.session_state:
+                            st.session_state[cs_number_key] = int(cs_val) if isinstance(cs_val, int) else 50
+                        cs_val_new = st.number_input(
+                            "CineSelect Puanı (1-100)",
+                            min_value=1,
+                            max_value=100,
+                            value=st.session_state[cs_number_key],
+                            step=1,
+                            key=cs_number_key
+                        )
+                        if comment_text_key not in st.session_state:
+                            _safe_set_state(comment_text_key, "")
+                        if comment_who_key not in st.session_state:
+                            st.session_state[comment_who_key] = "öz"
                         new_comment_text = st.text_area(
                             "Yorum ekle",
                             value=st.session_state[comment_text_key],
