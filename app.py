@@ -681,6 +681,16 @@ _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
 
+# --- Safe sort key wiring (avoid NameError if get_sort_key not yet bound) ---
+def _default_sort_key(f):
+    try:
+        return int(f.get("cineselectRating") or 0)
+    except Exception:
+        return 0
+
+_sort_key_fn = globals().get("get_sort_key", _default_sort_key)
+# --- /safe sort key wiring ---
+
 # --- Sorting key for favorites
 def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
@@ -697,8 +707,8 @@ def get_sort_key(fav):
         return 0
 
 # Reuse existing sorting logic so positions match the list below
-_movies_sorted = sorted(_movies_all, key=get_sort_key, reverse=True)
-_shows_sorted  = sorted(_shows_all, key=get_sort_key, reverse=True)
+_movies_sorted = sorted(_movies_all, key=_sort_key_fn, reverse=True)
+_shows_sorted  = sorted(_shows_all, key=_sort_key_fn, reverse=True)
 
 # Maps like "title::year" -> (favorite_dict, position)
 _movies_idx = {}
@@ -932,7 +942,7 @@ def show_favorites(fav_type, label):
     # Only show items with status == "to_watch"
     favorites = sorted(
         [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") in (None, "", "to_watch")],
-        key=get_sort_key,
+        key=_sort_key_fn,
         reverse=True
     )
 
