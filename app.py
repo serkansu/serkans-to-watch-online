@@ -738,10 +738,15 @@ if query:
             rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
             st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
-            slider_key = f"stars_{item['id']}"
             manual_key = f"manual_{item['id']}"
-            slider_val = st.slider("🎯 CineSelect Rating:", 1, 100, st.session_state.get(slider_key, 50), step=1, key=slider_key)
-            manual_val = st.number_input("Manual value:", min_value=1, max_value=100, value=slider_val, step=1, key=manual_key)
+            manual_val = st.number_input(
+                "🎯 CineSelect Rating:",
+                min_value=1,
+                max_value=100,
+                value=st.session_state.get(manual_key, 50),
+                step=1,
+                key=manual_key
+            )
 
             if st.button("Add to Favorites", key=f"btn_{item['id']}"):
                 media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
@@ -890,7 +895,7 @@ def show_favorites(fav_type, label):
     docs = db.collection("favorites").where("type", "==", fav_type).stream()
     # Only show items with status == "to_watch"
     favorites = sorted(
-        [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") == "to_watch"],
+        [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") in (None, "", "to_watch")],
         key=get_sort_key,
         reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
     )
@@ -953,10 +958,18 @@ def show_favorites(fav_type, label):
             cs_confirm_key = f"fav_cs_confirm_{fav['id']}"
             cs_val = fav.get("cineselectRating", 50)
             if cs_prompt_needed:
-                # Show slider and confirm button
-                if cs_slider_key not in st.session_state:
-                    st.session_state[cs_slider_key] = int(cs_val) if isinstance(cs_val, int) else 50
-                cs_val_new = st.slider("CineSelect Puanı (1-100)", 1, 100, st.session_state[cs_slider_key], key=cs_slider_key)
+                # Show number input and confirm button
+                cs_number_key = f"fav_cs_number_{fav['id']}"
+                if cs_number_key not in st.session_state:
+                    st.session_state[cs_number_key] = int(cs_val) if isinstance(cs_val, int) else 50
+                cs_val_new = st.number_input(
+                    "CineSelect Puanı (1-100)",
+                    min_value=1,
+                    max_value=100,
+                    value=st.session_state[cs_number_key],
+                    step=1,
+                    key=cs_number_key
+                )
                 if st.button("✅ Onayla", key=cs_confirm_key):
                     cs_int = int(cs_val_new)
                     # Compute emoji
@@ -1005,17 +1018,10 @@ def show_favorites(fav_type, label):
                 st.session_state[f"edit_mode_{fav['id']}"] = True
 
         if st.session_state.get(f"edit_mode_{fav['id']}", False):
-            s_key = f"slider_{fav['id']}"
             i_key = f"input_{fav['id']}"
             current = _clamp_cs(fav.get("cineselectRating", 50))
 
-            # Initial widget state defaults
-            if s_key not in st.session_state:
-                st.session_state[s_key] = current
-            if i_key not in st.session_state:
-                st.session_state[i_key] = current
-
-            # --- PIN FIRST: handle "Başa tuttur" BEFORE rendering inputs so they reflect new value immediately ---
+            # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
             pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
             if pin_now:
                 # Find the lowest CS visible on-screen (excluding 0/None)
@@ -1047,25 +1053,24 @@ def show_favorites(fav_type, label):
                         base = 50
 
                 pin_val = max(1, int(base) - 1)  # never below 1
-                # Stage new value into widgets (no Firestore write yet)
-                _safe_set_state(s_key, pin_val)
+                # Stage new value into widget (no Firestore write yet)
                 _safe_set_state(i_key, pin_val)
                 st.info(f"📌 Yeni CS {pin_val} olarak ayarlandı. '✅ Kaydet' ile onaylayın.")
 
-            # --- Now render inputs using (possibly updated) session state ---
-            st.slider(
-                "🎯 CS:", 1, 100, st.session_state[s_key], step=1,
-                key=s_key, on_change=_sync_cs_from_slider, args=(s_key, i_key)
-            )
+            # Now render input using (possibly updated) session state
             st.number_input(
-                "CS (manuel):", min_value=1, max_value=100, value=st.session_state[i_key], step=1,
-                key=i_key, on_change=_sync_cs_from_input, args=(i_key, s_key)
+                "🎯 CS:",
+                min_value=1,
+                max_value=100,
+                value=st.session_state.get(i_key, current),
+                step=1,
+                key=i_key
             )
 
             cols_edit = st.columns([1,2])
             with cols_edit[0]:
                 if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
-                    new_val = _clamp_cs(st.session_state.get(i_key, st.session_state.get(s_key, current)))
+                    new_val = _clamp_cs(st.session_state.get(i_key, current))
                     db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
                     st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
                     st.session_state[f"edit_mode_{fav['id']}"] = False
@@ -1114,6 +1119,35 @@ for idx, fav in enumerate(watched_items, start=1):
         if emoji:
             title_str += f" {emoji}"
         st.markdown(f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}")
+        # --- Comment Section ---
+        # Show existing comment if present
+        if fav.get("comment"):
+            st.markdown(f"💬 {fav['comment']}")
+
+        # Comment input area
+        comment_key = f"comment_{fav['id']}"
+        comment_text = st.text_area(
+            "Yorum ekle",
+            value="",
+            key=comment_key,
+            label_visibility="collapsed",
+            height=80,
+        )
+        comment_btn_key = f"comment_btn_{fav['id']}"
+        if st.button("💬 Comment yap", key=comment_btn_key):
+            from datetime import datetime
+            now_str = format_turkish_datetime(datetime.now())
+            watched_by = fav.get("watchedBy", "")
+            comment_full = comment_text.strip()
+            if comment_full:
+                # Add metadata: " — (watchedBy) • {now_str}"
+                meta = f" — ({watched_by}) • {now_str}" if watched_by else f" — {now_str}"
+                comment_value = comment_full + meta
+                db.collection("favorites").document(fav["id"]).update({
+                    "comment": comment_value
+                })
+                st.success("💬 Yorum kaydedildi!")
+                st.rerun()
     with cols[2]:
         status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w"]
         if fav.get("status") == "to_watch":
@@ -1134,10 +1168,18 @@ for idx, fav in enumerate(watched_items, start=1):
         cs_confirm_key = f"cs_confirm_{fav['id']}"
         cs_val = fav.get("cineselectRating", 50)
         if cs_prompt_needed:
-            # Show slider and confirm button
-            if cs_slider_key not in st.session_state:
-                st.session_state[cs_slider_key] = int(cs_val) if isinstance(cs_val, int) else 50
-            cs_val_new = st.slider("CineSelect Puanı (1-100)", 1, 100, st.session_state[cs_slider_key], key=cs_slider_key)
+            # Show number input and confirm button
+            cs_number_key = f"cs_number_{fav['id']}"
+            if cs_number_key not in st.session_state:
+                st.session_state[cs_number_key] = int(cs_val) if isinstance(cs_val, int) else 50
+            cs_val_new = st.number_input(
+                "CineSelect Puanı (1-100)",
+                min_value=1,
+                max_value=100,
+                value=st.session_state[cs_number_key],
+                step=1,
+                key=cs_number_key
+            )
             if st.button("✅ Onayla", key=cs_confirm_key):
                 # Compute emoji (new logic)
                 cs_int = int(cs_val_new)
@@ -1201,24 +1243,21 @@ for idx, fav in enumerate(watched_items, start=1):
                 st.rerun()
     # --- Edit mode UI for CineSelect rating ---
     if st.session_state.get(f"edit_mode_w_{fav['id']}", False):
-        # Use same clamp utility as show_favorites
-        s_key = f"slider_w_{fav['id']}"
+        # Use only number_input for CineSelect rating edit
         i_key = f"input_w_{fav['id']}"
         current = _clamp_cs(fav.get("cineselectRating", 50))
-        if s_key not in st.session_state:
-            st.session_state[s_key] = current
         if i_key not in st.session_state:
             st.session_state[i_key] = current
-        st.slider(
-            "🎯 CS:", 1, 100, st.session_state[s_key], step=1,
-            key=s_key, on_change=_sync_cs_from_slider, args=(s_key, i_key)
-        )
         st.number_input(
-            "CS (manuel):", min_value=1, max_value=100, value=st.session_state[i_key], step=1,
-            key=i_key, on_change=_sync_cs_from_input, args=(i_key, s_key)
+            "🎯 CS:",
+            min_value=1,
+            max_value=100,
+            value=st.session_state[i_key],
+            step=1,
+            key=i_key
         )
         if st.button("✅ Kaydet", key=f"save_w_{fav['id']}"):
-            new_val = _clamp_cs(st.session_state.get(i_key, st.session_state.get(s_key, current)))
+            new_val = _clamp_cs(st.session_state.get(i_key, current))
             # Compute emoji based on new_val (new logic)
             if new_val < 50:
                 emoji = "👎"
