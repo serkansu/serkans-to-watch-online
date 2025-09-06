@@ -630,14 +630,14 @@ with st.expander("⚙️ Options"):
         st.rerun()
 
     # 2. Toggle Posters
-    if "show_posters" not in st.session_state:
-        st.session_state["show_posters"] = True
+if "show_posters" not in st.session_state:
+    _safe_set_state("show_posters", True)
     if st.button("🖼️ Toggle Posters"):
         st.session_state["show_posters"] = not st.session_state["show_posters"]
 
     # 3. JSON & CSV Sync
-    if "sync_sort_mode" not in st.session_state:
-        st.session_state["sync_sort_mode"] = "cc"
+if "sync_sort_mode" not in st.session_state:
+    _safe_set_state("sync_sort_mode", "cc")
     if st.button("📂 JSON & CSV Sync"):
         sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
         st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
@@ -659,7 +659,7 @@ media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress"], hor
 
 # ---- Safe clear for search widgets (avoid modifying after instantiation)
 if "clear_search" not in st.session_state:
-    st.session_state.clear_search = False
+    _safe_set_state("clear_search", False)
 
 if st.session_state.clear_search:
     # reset the flag and clear both the input widget's value and the session copy
@@ -668,7 +668,7 @@ if st.session_state.clear_search:
     _safe_set_state("query", "")
 
 if "query" not in st.session_state:
-    st.session_state.query = ""
+    _safe_set_state("query", "")
 
 query = st.text_input(
     f"🔍 Search for a {media_type.lower()}",
@@ -680,6 +680,21 @@ st.session_state.query = query
 _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
 _shows_all  = list(st.session_state.get("favorite_series", []))
+
+# --- Sorting key for favorites
+def get_sort_key(fav):
+    sort_name = st.session_state.get("fav_sort", "CineSelect")
+    try:
+        if sort_name == "IMDb":
+            return float(fav.get("imdbRating") or 0)
+        elif sort_name == "RT":
+            return float(fav.get("rt") or 0)
+        elif sort_name == "CineSelect":
+            return int(fav.get("cineselectRating") or 0)
+        elif sort_name == "Year":
+            return int(fav.get("year") or 0)
+    except Exception:
+        return 0
 
 # Reuse existing sorting logic so positions match the list below
 _movies_sorted = sorted(_movies_all, key=get_sort_key, reverse=True)
@@ -898,7 +913,7 @@ st.subheader("❤️ İzlenecekler Listesi")
 # --- Toggle between To-Watch and Watched with a radio button ---
 # Persist fav_section selection in session_state
 if "fav_section" not in st.session_state:
-    st.session_state["fav_section"] = "📌 İzlenecekler"
+    _safe_set_state("fav_section", "📌 İzlenecekler")
 fav_section = st.radio(
     "Liste türü:",
     ["📌 İzlenecekler", "🎬 İzlenenler", "🖤 Blacklist"],
@@ -911,27 +926,6 @@ sort_option = st.selectbox(
     "Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=2, key="fav_sort"
 )
 
-def get_sort_key(fav):
-    # Default sort name to CineSelect
-    sort_name = st.session_state.get("fav_sort", "CineSelect")
-    try:
-        if sort_name == "IMDb":
-            return float(fav.get("imdbRating", 0) or 0)
-        elif sort_name == "RT":
-            return float(fav.get("rt", 0) or 0)
-        elif sort_name == "CineSelect":
-            # CineSelect DESCENDING; tie-break by IMDb ASC
-            cs = int(fav.get("cineselectRating", 0) or 0)
-            imdb = float(fav.get("imdbRating", 0) or 0)
-            # For reverse=True, return (-cs, imdb) so higher CS sorts first
-            return (-cs, imdb)
-        elif sort_name == "Year":
-            return int(fav.get("year", 0) or 0)
-    except Exception:
-        # Robust fallback key
-        if sort_name == "CineSelect":
-            return (-int(fav.get("cineselectRating", 0) or 0), float(fav.get("imdbRating", 0) or 0))
-        return 0
 
 def show_favorites(fav_type, label):
     docs = db.collection("favorites").where("type", "==", fav_type).stream()
@@ -1114,69 +1108,60 @@ def show_favorites(fav_type, label):
                     st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
                     st.rerun()
         with cols[3]:
-            if st.button("✏️", key=f"edit_{fav['id']}"):
-                st.session_state[f"edit_mode_{fav['id']}"] = True
-
-        if st.session_state.get(f"edit_mode_{fav['id']}", False):
-            i_key = f"input_{fav['id']}"
-            current = _clamp_cs(fav.get("cineselectRating", 50))
-
-            # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
-            pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
-            if pin_now:
-                # Find the lowest CS visible on-screen (excluding 0/None)
-                try:
-                    visible_cs = [
-                        int(x.get("cineselectRating") or 0)
-                        for x in favorites
-                        if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
-                    ]
-                except Exception:
-                    visible_cs = []
-
-                if visible_cs:
-                    base = min(visible_cs)
-                else:
-                    # Fallback: scan Firestore
-                    base = None
-                    for d in db.collection("favorites").where("type", "==", fav_type).stream():
-                        raw = (d.to_dict() or {}).get("cineselectRating")
-                        try:
-                            cs = int(raw)
-                        except Exception:
-                            continue
-                        if cs <= 0:
-                            continue
-                        if base is None or cs < base:
-                            base = cs
-                    if base is None:
-                        base = 50
-
-                pin_val = max(1, int(base) - 1)  # never below 1
-                # Stage new value into widget (no Firestore write yet)
-                _safe_set_state(i_key, pin_val)
-                st.info(f"📌 Yeni CS {pin_val} olarak ayarlandı. '✅ Kaydet' ile onaylayın.")
-
-            # Now render input using (possibly updated) session state
-            st.number_input(
-                "🎯 CS:",
-                min_value=1,
-                max_value=100,
-                value=st.session_state.get(i_key, current),
-                step=1,
-                key=i_key
-            )
-
-            cols_edit = st.columns([1,2])
-            with cols_edit[0]:
-                if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
-                    new_val = _clamp_cs(st.session_state.get(i_key, current))
-                    db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
-                    st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
-                    st.session_state[f"edit_mode_{fav['id']}"] = False
-                    st.rerun()
-            with cols_edit[1]:
-                st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
+            with st.expander("⚙️ Options"):
+                if st.button("✏️", key=f"edit_{fav['id']}"):
+                    _safe_set_state(f"edit_mode_{fav['id']}", True)
+                # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
+                pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
+                if pin_now:
+                    try:
+                        visible_cs = [
+                            int(x.get("cineselectRating") or 0)
+                            for x in favorites
+                            if isinstance(x.get("cineselectRating"), (int, float)) and int(x.get("cineselectRating") or 0) > 0
+                        ]
+                    except Exception:
+                        visible_cs = []
+                    if visible_cs:
+                        base = min(visible_cs)
+                    else:
+                        base = None
+                        for d in db.collection("favorites").where("type", "==", fav_type).stream():
+                            raw = (d.to_dict() or {}).get("cineselectRating")
+                            try:
+                                cs = int(raw)
+                            except Exception:
+                                continue
+                            if cs <= 0:
+                                continue
+                            if base is None or cs < base:
+                                base = cs
+                        if base is None:
+                            base = 50
+                    pin_val = max(1, int(base) - 1)
+                    _safe_set_state(f"input_{fav['id']}", pin_val)
+                    st.info(f"📌 Yeni CS {pin_val} olarak ayarlandı. '✅ Kaydet' ile onaylayın.")
+                if st.session_state.get(f"edit_mode_{fav['id']}", False):
+                    i_key = f"input_{fav['id']}"
+                    current = _clamp_cs(fav.get("cineselectRating", 50))
+                    st.number_input(
+                        "🎯 CS:",
+                        min_value=1,
+                        max_value=100,
+                        value=st.session_state.get(i_key, current),
+                        step=1,
+                        key=i_key
+                    )
+                    cols_edit = st.columns([1,2])
+                    with cols_edit[0]:
+                        if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
+                            new_val = _clamp_cs(st.session_state.get(i_key, current))
+                            db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
+                            st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
+                            _safe_set_state(f"edit_mode_{fav['id']}", False)
+                            st.rerun()
+                    with cols_edit[1]:
+                        st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
@@ -1470,7 +1455,7 @@ elif fav_section == "🎬 İzlenenler":
                         st.rerun()
                 # --- Edit CineSelect rating button ---
                 if st.button("✏️", key=f"edit_w_{fav['id']}"):
-                    st.session_state[f"edit_mode_w_{fav['id']}"] = True
+                    _safe_set_state(f"edit_mode_w_{fav['id']}", True)
                 # --- Refresh IMDb/RT ratings button ---
                 if st.button("🔄 Refresh", key=f"refresh_w_{fav['id']}"):
                     imdb_id = fav.get("imdb")
@@ -1489,7 +1474,7 @@ elif fav_section == "🎬 İzlenenler":
                     i_key = f"input_w_{fav['id']}"
                     current = _clamp_cs(fav.get("cineselectRating", 50))
                     if i_key not in st.session_state:
-                        st.session_state[i_key] = current
+                        _safe_set_state(i_key, current)
                     st.number_input(
                         "🎯 CS:",
                         min_value=1,
@@ -1501,7 +1486,6 @@ elif fav_section == "🎬 İzlenenler":
                     # --- Date input for watchedAt ---
                     import datetime as dtmod
                     date_key = f"watchedAt_{fav['id']}"
-                    # Try to parse watchedAt to a date, fallback to today
                     raw_watchedAt = fav.get("watchedAt")
                     default_date = parse_turkish_or_iso_date(raw_watchedAt)
                     new_date = st.date_input("İzlenme tarihi", value=default_date, key=date_key)
@@ -1518,7 +1502,6 @@ elif fav_section == "🎬 İzlenenler":
                             emoji = "👍👍"
                         else:
                             emoji = "👍👍👍"
-                        # Format watchedAt in Turkish date (no time)
                         watchedAt_str = format_turkish_datetime(dtmod.datetime.combine(new_date, dtmod.datetime.min.time()))
                         db.collection("favorites").document(fav["id"]).update({
                             "cineselectRating": new_val,
@@ -1526,7 +1509,7 @@ elif fav_section == "🎬 İzlenenler":
                             "watchedAt": watchedAt_str
                         })
                         st.success(f"✅ {fav.get('title','?')} güncellendi (CS={new_val} {emoji}, İzlenme tarihi: {watchedAt_str}).")
-                        st.session_state[f"edit_mode_w_{fav['id']}"] = False
+                        _safe_set_state(f"edit_mode_w_{fav['id']}", False)
                         st.rerun()
 
 # --- Blacklist Section ---
@@ -1703,7 +1686,7 @@ elif fav_section == "🖤 Blacklist":
                 if cs_prompt_needed:
                     with st.expander("💬 Yorum / Onay"):
                         if cs_number_key not in st.session_state:
-                            st.session_state[cs_number_key] = int(cs_val) if isinstance(cs_val, int) else 50
+                            _safe_set_state(cs_number_key, int(cs_val) if isinstance(cs_val, int) else 50)
                         cs_val_new = st.number_input(
                             "CineSelect Puanı (1-100)",
                             min_value=1,
@@ -1715,7 +1698,7 @@ elif fav_section == "🖤 Blacklist":
                         if comment_text_key not in st.session_state:
                             _safe_set_state(comment_text_key, "")
                         if comment_who_key not in st.session_state:
-                            st.session_state[comment_who_key] = "öz"
+                            _safe_set_state(comment_who_key, "öz")
                         new_comment_text = st.text_area(
                             "Yorum ekle",
                             value=st.session_state[comment_text_key],
