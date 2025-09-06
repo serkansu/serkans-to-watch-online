@@ -741,7 +741,7 @@ if query:
                 _cs = _fav.get('cineselectRating', 'N/A')
                 _added = _fav.get('addedAt')
                 try:
-                    _added_txt = _added.strftime("%Y-%m-%d") if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
                 except Exception:
                     _added_txt = "—"
                 st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
@@ -750,7 +750,7 @@ if query:
                 _cs = _fav.get('cineselectRating', 'N/A')
                 _added = _fav.get('addedAt')
                 try:
-                    _added_txt = _added.strftime("%Y-%m-%d") if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
                 except Exception:
                     _added_txt = "—"
                 st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
@@ -872,7 +872,7 @@ if query:
                     # Bilgilendirme: Bu TMDB id zaten listedeydi; alanlar güncellendi.
                     try:
                         _when = _prev_data.get("addedAt")
-                        _when_txt = _when.strftime("%Y-%m-%d") if hasattr(_when, "strftime") else str(_when)
+                        _when_txt = format_turkish_datetime(_when) if hasattr(_when, "strftime") else str(_when)
                     except Exception:
                         _when_txt = "—"
                     st.info(f"ℹ️ Bu öğe zaten listendeydi (ilk eklenme: {_when_txt}); bilgiler güncellendi.", icon="ℹ️")
@@ -1240,8 +1240,8 @@ elif fav_section == "🎬 İzlenenler":
             # --- Sort comments by date descending before displaying ---
         from datetime import datetime as _dt
         comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
-            if comments_sorted:
-                for c_idx, c in enumerate(comments_sorted):
+        if comments_sorted:
+            for c_idx, c in enumerate(comments_sorted):
                     text = c.get("text", "")
                     who = c.get("watchedBy", "")
                     date = c.get("date", "")
@@ -1503,21 +1503,7 @@ elif fav_section == "🎬 İzlenenler":
                     date_key = f"watchedAt_{fav['id']}"
                     # Try to parse watchedAt to a date, fallback to today
                     raw_watchedAt = fav.get("watchedAt")
-                    def parse_turkish_date(s):
-                        if not s:
-                            return dtmod.date.today()
-                        stxt = str(s)
-                        # Reverse-translate Turkish months/days to English for parsing
-                        for eng, tr in TURKISH_MONTHS.items():
-                            stxt = stxt.replace(tr, eng)
-                        for eng, tr in TURKISH_DAYS.items():
-                            stxt = stxt.replace(tr, eng)
-                        try:
-                            d = dtmod.datetime.strptime(stxt, "%d %B %Y %A")
-                            return d.date()
-                        except Exception:
-                            return dtmod.date.today()
-                    default_date = parse_turkish_date(raw_watchedAt)
+                    default_date = parse_turkish_or_iso_date(raw_watchedAt)
                     new_date = st.date_input("İzlenme tarihi", value=default_date, key=date_key)
                     if st.button("✅ Kaydet", key=f"save_w_{fav['id']}"):
                         new_val = _clamp_cs(st.session_state.get(i_key, current))
@@ -1858,20 +1844,7 @@ elif fav_section == "🖤 Blacklist":
                     date_key = f"blacklistedAt_{fav['id']}"
                     # Try to parse blacklistedAt to a date, fallback to today
                     raw_blacklistedAt = fav.get("blacklistedAt")
-                    def parse_turkish_date_bl(s):
-                        if not s:
-                            return dtmod.date.today()
-                        stxt = str(s)
-                        for eng, tr in TURKISH_MONTHS.items():
-                            stxt = stxt.replace(tr, eng)
-                        for eng, tr in TURKISH_DAYS.items():
-                            stxt = stxt.replace(tr, eng)
-                        try:
-                            d = dtmod.datetime.strptime(stxt, "%d %B %Y %A")
-                            return d.date()
-                        except Exception:
-                            return dtmod.date.today()
-                    default_date = parse_turkish_date_bl(raw_blacklistedAt)
+                    default_date = parse_turkish_or_iso_date(raw_blacklistedAt)
                     new_date = st.date_input("Blacklist tarihi", value=default_date, key=date_key)
                     if st.button("✅ Kaydet", key=f"save_bl_{fav['id']}"):
                         new_val = _clamp_cs(st.session_state.get(i_key, current))
