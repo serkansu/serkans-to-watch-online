@@ -742,12 +742,23 @@ _shows_all  = list(st.session_state.get("favorite_series", []))
 def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
-        if sort_name == "IMDb":
+        # Always return tuple: (CS, IMDb, Year) for CineSelect mode
+        if sort_name == "CineSelect":
+            cs = int(fav.get("cineselectRating") or 0)
+            try:
+                imdb = float(fav.get("imdbRating") or 0)
+            except Exception:
+                imdb = 0.0
+            try:
+                year = int(fav.get("year") or 0)
+            except Exception:
+                year = 0
+            # For reverse=True, sort DESC
+            return (cs, imdb, year)
+        elif sort_name == "IMDb":
             return float(fav.get("imdbRating") or 0)
         elif sort_name == "RT":
             return float(fav.get("rt") or 0)
-        elif sort_name == "CineSelect":
-            return int(fav.get("cineselectRating") or 0)
         elif sort_name == "Year":
             return int(fav.get("year") or 0)
     except Exception:
@@ -1026,26 +1037,34 @@ def show_favorites(fav_type, label):
                     st.image(poster_url, width=120)
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
+            # --- Display comments just under the movie title/details, in the main info block ---
+            comments = fav.get("comments", [])
+            new_comments = list(comments) if comments else []
+            for c in new_comments:
+                st.write(f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}")
         with cols[2]:
             with st.expander("✨ Options"):
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 # --- Yorum Ekle expander for İzlenecekler (to-watch) ---
                 with st.expander("💬 Yorum Ekle"):
                     comment_key = f"to_watch_comment_{fav['id']}"
-                    comment_text = st.text_area(
-                        "Yorum ekle",
-                        value=st.session_state.get(comment_key, ""),
-                        key=comment_key,
-                        height=300,
-                    )
                     comment_wb_key = f"to_watch_comment_wb_{fav['id']}"
-                    # Place selectbox directly under textarea, not inside columns, with label_visibility
-                    comment_wb_val = st.selectbox(
-                        "Yorumu kim yaptı?",
-                        ["öz", "ss", "öz❤️ss"],
-                        key=comment_wb_key,
-                        label_visibility="visible"
-                    )
+                    # Horizontal layout for textarea and selectbox
+                    comment_cols = st.columns([10, 2])
+                    with comment_cols[0]:
+                        comment_text = st.text_area(
+                            "Yorum ekle",
+                            value=st.session_state.get(comment_key, ""),
+                            key=comment_key,
+                            height=100,
+                        )
+                    with comment_cols[1]:
+                        comment_wb_val = st.selectbox(
+                            "Yorumu kim yaptı?",
+                            ["öz", "ss", "öz❤️ss"],
+                            key=comment_wb_key,
+                            label_visibility="visible"
+                        )
                     comment_btn_key = f"to_watch_comment_btn_{fav['id']}"
                     # Track new_comments for immediate display after adding
                     comments = fav.get("comments", [])
@@ -1067,9 +1086,7 @@ def show_favorites(fav_type, label):
                             })
                             _safe_set_state(comment_key, "")
                             st.success("💬 Yorum kaydedildi!")
-                    # Show updated comments immediately (including any just-added)
-                    for c in new_comments:
-                        st.write(f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}")
+                    # No comments display here: now shown in main info block
                     # If comment was just added, do NOT st.rerun() immediately, so it shows instantly
 
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
@@ -1224,6 +1241,7 @@ def show_favorites(fav_type, label):
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
                 pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
                 if pin_now:
+                    # Find the maximum visible CS among current items and set to min(100, max_val + 1)
                     try:
                         visible_cs = [
                             int(x.get("cineselectRating") or 0)
@@ -1233,22 +1251,10 @@ def show_favorites(fav_type, label):
                     except Exception:
                         visible_cs = []
                     if visible_cs:
-                        base = min(visible_cs)
+                        base = max(visible_cs)
                     else:
-                        base = None
-                        for d in db.collection("favorites").where("type", "==", fav_type).stream():
-                            raw = (d.to_dict() or {}).get("cineselectRating")
-                            try:
-                                cs = int(raw)
-                            except Exception:
-                                continue
-                            if cs <= 0:
-                                continue
-                            if base is None or cs < base:
-                                base = cs
-                        if base is None:
-                            base = 50
-                    pin_val = max(1, int(base) - 1)
+                        base = 50
+                    pin_val = min(100, base + 1)
                     _safe_set_state(f"input_{fav['id']}", pin_val)
                     st.info(f"📌 Yeni CS {pin_val} olarak ayarlandı. '✅ Kaydet' ile onaylayın.")
                 if st.session_state.get(f"edit_mode_{fav['id']}", False):
