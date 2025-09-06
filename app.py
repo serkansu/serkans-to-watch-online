@@ -976,7 +976,7 @@ if query:
                 st.rerun()
 
 st.divider()
-st.subheader("❤️ İzlenecekler Listesi")
+st.subheader("🎬 Film / Dizi Listesi")
 
 if "fav_section" not in st.session_state:
     _safe_set_state("fav_section", "📌 İzlenecekler")
@@ -1166,21 +1166,14 @@ def show_favorites(fav_type, label):
                             if comments is None:
                                 comments = []
                             # Append comment if provided
+                            updated_comments = list(comments) if comments else []
                             if new_comment_text.strip():
                                 new_comment = {
                                     "text": new_comment_text.strip(),
                                     "watchedBy": new_comment_who,
                                     "date": now_str
                                 }
-                                comments = list(comments) if comments else []
-                                comments.append(new_comment)
-                            # --- Prefix all old comments with (filmi izlemeden önce) if not already ---
-                            updated_comments = []
-                            for c in comments:
-                                if not (c.get("text", "").startswith("(filmi izlemeden önce)")):
-                                    c = dict(c)
-                                    c["text"] = "(filmi izlemeden önce) " + c["text"]
-                                updated_comments.append(c)
+                                updated_comments.append(new_comment)
                             doc_ref = db.collection("favorites").document(fav["id"])
                             if status_select in ["öz", "ss", "öz❤️ss"]:
                                 doc_ref.update({
@@ -1521,14 +1514,14 @@ elif fav_section == "🎬 İzlenenler":
                             comments = fav.get("comments", [])
                             if comments is None:
                                 comments = []
+                            updated_comments = list(comments) if comments else []
                             if new_comment_text.strip():
                                 new_comment = {
                                     "text": new_comment_text.strip(),
                                     "watchedBy": new_comment_who,
                                     "date": now_str
                                 }
-                                comments = list(comments) if comments else []
-                                comments.append(new_comment)
+                                updated_comments.append(new_comment)
                             doc_ref = db.collection("favorites").document(fav["id"])
                             if status_select in ["öz", "ss", "öz❤️ss"]:
                                 doc_ref.update({
@@ -1537,7 +1530,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "watchedAt": now_str,
                                     "cineselectRating": cs_int,
                                     "watchedEmoji": emoji,
-                                    "comments": comments,
+                                    "comments": updated_comments,
                                     "blacklistedBy": None,
                                     "blacklistedAt": None,
                                 })
@@ -1551,7 +1544,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "blacklistedAt": now_str,
                                     "cineselectRating": cs_int,
                                     "watchedEmoji": emoji,
-                                    "comments": comments,
+                                    "comments": updated_comments,
                                     "watchedBy": None,
                                     "watchedAt": None,
                                 })
