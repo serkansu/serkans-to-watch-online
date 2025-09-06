@@ -1036,15 +1036,20 @@ def show_favorites(fav_type, label):
                         "Yorum ekle",
                         value=st.session_state.get(comment_key, ""),
                         key=comment_key,
-                        height=120,
+                        height=300,
                     )
                     comment_wb_key = f"to_watch_comment_wb_{fav['id']}"
+                    # Place selectbox directly under textarea, not inside columns, with label_visibility
                     comment_wb_val = st.selectbox(
                         "Yorumu kim yaptı?",
                         ["öz", "ss", "öz❤️ss"],
                         key=comment_wb_key,
+                        label_visibility="visible"
                     )
                     comment_btn_key = f"to_watch_comment_btn_{fav['id']}"
+                    # Track new_comments for immediate display after adding
+                    comments = fav.get("comments", [])
+                    new_comments = list(comments) if comments else []
                     if st.button("💬 Comment yap", key=comment_btn_key):
                         from datetime import datetime as _dt
                         now_str = format_turkish_datetime(_dt.now())
@@ -1056,15 +1061,16 @@ def show_favorites(fav_type, label):
                                 "watchedBy": who_val,
                                 "date": now_str,
                             }
-                            comments = fav.get("comments", [])
-                            new_comments = list(comments) if comments else []
                             new_comments.append(new_comment)
                             db.collection("favorites").document(fav["id"]).update({
                                 "comments": new_comments
                             })
                             _safe_set_state(comment_key, "")
                             st.success("💬 Yorum kaydedildi!")
-                            st.rerun()
+                    # Show updated comments immediately (including any just-added)
+                    for c in new_comments:
+                        st.write(f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}")
+                    # If comment was just added, do NOT st.rerun() immediately, so it shows instantly
 
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
