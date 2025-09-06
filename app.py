@@ -599,6 +599,9 @@ st.markdown(
         color: inherit !important;
         background-color: inherit !important;
     }
+    .comment-box {
+        color: #000 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -1268,7 +1271,7 @@ elif fav_section == "🎬 İzlenenler":
             )
             if comments_sorted:
                 st.markdown(
-                    '<div style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
+                    '<div class="comment-box" style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
                     + "<br>".join(
                         [
                             f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}"
@@ -1625,7 +1628,7 @@ elif fav_section == "🖤 Blacklist":
             )
             if comments_sorted:
                 st.markdown(
-                    '<div style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
+                    '<div class="comment-box" style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
                     + "<br>".join(
                         [
                             f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}"
