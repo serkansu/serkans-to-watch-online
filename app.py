@@ -68,13 +68,13 @@ def parse_turkish_or_iso_date(v):
             s = s.replace(tr, eng)
         # Try multiple known formats
         for fmt in (
+            "%d/%m/%y",  # Try short Turkish/ISO date format first
             "%d %B %Y %A",
             "%Y-%m-%d",
             "%Y-%m-%d %H:%M",
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%dT%H:%M",
             "%Y-%m-%dT%H:%M:%S",
-            "%d/%m/%y",  # Add support for short Turkish/ISO date format
         ):
             try:
                 return _DT.strptime(s, fmt)
@@ -934,17 +934,20 @@ if query:
 st.divider()
 st.subheader("❤️ İzlenecekler Listesi")
 
-# --- Toggle between To-Watch and Watched with a radio button ---
-# Persist fav_section selection in session_state
 if "fav_section" not in st.session_state:
     _safe_set_state("fav_section", "📌 İzlenecekler")
-fav_section = st.radio(
+# Custom radio with rerun on change
+new_section = st.radio(
     "Liste türü:",
     ["📌 İzlenecekler", "🎬 İzlenenler", "🖤 Blacklist"],
     index=0,
     horizontal=True,
-    key="fav_section"
+    key="fav_section_radio"
 )
+if new_section != st.session_state.get("fav_section", ""):
+    st.session_state["fav_section"] = new_section
+    st.rerun()
+fav_section = st.session_state["fav_section"]
 
 sort_option = st.selectbox(
     "Sort by:", ["IMDb", "RT", "CineSelect", "Year"], index=2, key="fav_sort"
