@@ -591,6 +591,18 @@ def sync_with_firebase(sort_mode="imdb"):
 # --- Inserted: Page config and auth gate ---
 st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
 ensure_authenticated()
+# --- Global CSS for input/text color (theme-adaptive) ---
+st.markdown(
+    """
+    <style>
+    textarea, input, .stTextInput, .stTextArea {
+        color: inherit !important;
+        background-color: inherit !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
@@ -1045,6 +1057,7 @@ def show_favorites(fav_type, label):
                             value=st.session_state[comment_text_key],
                             key=comment_text_key,
                             height=80,
+                            label_visibility="collapsed",
                         )
                         if status_select == "🖤 BL":
                             new_comment_who = "🖤 BL"
@@ -1298,6 +1311,7 @@ elif fav_section == "🎬 İzlenenler":
                                     value=text,
                                     key=f"edit_comment_text_{fav['id']}_{c_idx}",
                                     height=80,
+                                    label_visibility="collapsed",
                                 )
                             with edit_cols[1]:
                                 new_who = st.selectbox(
@@ -1403,6 +1417,7 @@ elif fav_section == "🎬 İzlenenler":
                             value=st.session_state[comment_text_key],
                             key=comment_text_key,
                             height=80,
+                            label_visibility="collapsed",
                         )
                         if status_select == "🖤 BL":
                             new_comment_who = "🖤 BL"
