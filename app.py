@@ -1320,45 +1320,45 @@ elif fav_section == "🎬 İzlenenler":
                                 st.session_state[f"edit_comment_mode_{fav['id']}_{c_idx}"] = False
                                 st.rerun()
                 # --- New: Add Yorum Ekle expander for new comment input ---
-                with st.expander("💬 Yorum Ekle"):
-                    comment_key = f"comment_{fav['id']}"
-                    input_cols = st.columns([3, 2])
-                    with input_cols[0]:
-                        comment_text = st.text_area(
-                            "Yorum ekle",
-                            value=st.session_state.get(comment_key, ""),
-                            key=comment_key,
-                            label_visibility="collapsed",
-                            height=80,
-                        )
-                    with input_cols[1]:
-                        comment_wb_key = f"comment_wb_{fav['id']}"
-                        comment_wb_val = st.selectbox(
-                            "Yorumu kim yaptı?",
-                            ["öz", "ss", "öz❤️ss"],
-                            key=comment_wb_key,
-                        )
-                    comment_btn_key = f"comment_btn_{fav['id']}"
-                    if st.button("💬 Comment yap", key=comment_btn_key):
-                        from datetime import datetime
-                        now_str = format_turkish_datetime(datetime.now())
-                        comment_full = comment_text.strip()
-                        who_val = st.session_state.get(comment_wb_key, "")
-                        if comment_full and who_val:
-                            # Append to comments list
-                            new_comment = {
-                                "text": comment_full,
-                                "watchedBy": who_val,
-                                "date": now_str,
-                            }
-                            new_comments = list(comments) if comments else []
-                            new_comments.append(new_comment)
-                            db.collection("favorites").document(fav["id"]).update({
-                                "comments": new_comments
-                            })
-                            _safe_set_state(comment_key, "")
-                            st.success("💬 Yorum kaydedildi!")
-                            st.rerun()
+            with st.expander("💬 Yorum Ekle"):
+                comment_key = f"comment_{fav['id']}"
+                input_cols = st.columns([3, 2])
+                with input_cols[0]:
+                    comment_text = st.text_area(
+                        "Yorum ekle",
+                        value=st.session_state.get(comment_key, ""),
+                        key=comment_key,
+                        label_visibility="collapsed",
+                        height=80,
+                    )
+                with input_cols[1]:
+                    comment_wb_key = f"comment_wb_{fav['id']}"
+                    comment_wb_val = st.selectbox(
+                        "Yorumu kim yaptı?",
+                        ["öz", "ss", "öz❤️ss"],
+                        key=comment_wb_key,
+                    )
+                comment_btn_key = f"comment_btn_{fav['id']}"
+                if st.button("💬 Comment yap", key=comment_btn_key):
+                    from datetime import datetime
+                    now_str = format_turkish_datetime(datetime.now())
+                    comment_full = comment_text.strip()
+                    who_val = st.session_state.get(comment_wb_key, "")
+                    if comment_full and who_val:
+                        # Append to comments list
+                        new_comment = {
+                            "text": comment_full,
+                            "watchedBy": who_val,
+                            "date": now_str,
+                        }
+                        new_comments = list(comments) if comments else []
+                        new_comments.append(new_comment)
+                        db.collection("favorites").document(fav["id"]).update({
+                            "comments": new_comments
+                        })
+                        _safe_set_state(comment_key, "")
+                        st.success("💬 Yorum kaydedildi!")
+                        st.rerun()
                 # --- Status selectbox (short labels) ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 if fav.get("status") == "to_watch":
