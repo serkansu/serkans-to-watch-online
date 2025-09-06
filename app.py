@@ -10,8 +10,39 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
-import locale
-locale.setlocale(locale.LC_TIME, "tr_TR.UTF-8")
+# --- Turkish month and day name mappings ---
+TURKISH_MONTHS = {
+    "January": "Ocak",
+    "February": "Şubat",
+    "March": "Mart",
+    "April": "Nisan",
+    "May": "Mayıs",
+    "June": "Haziran",
+    "July": "Temmuz",
+    "August": "Ağustos",
+    "September": "Eylül",
+    "October": "Ekim",
+    "November": "Kasım",
+    "December": "Aralık",
+}
+TURKISH_DAYS = {
+    "Monday": "Pazartesi",
+    "Tuesday": "Salı",
+    "Wednesday": "Çarşamba",
+    "Thursday": "Perşembe",
+    "Friday": "Cuma",
+    "Saturday": "Cumartesi",
+    "Sunday": "Pazar",
+}
+
+# Helper to format datetime in Turkish
+def format_turkish_datetime(dt):
+    s = dt.strftime("%d %B %Y %A %H:%M")
+    for eng, tr in TURKISH_MONTHS.items():
+        s = s.replace(eng, tr)
+    for eng, tr in TURKISH_DAYS.items():
+        s = s.replace(eng, tr)
+    return s
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
 
@@ -925,7 +956,6 @@ def show_favorites(fav_type, label):
                     st.rerun()
                 else:
                     # Extract person string from "watched (xxx)"
-                    import locale
                     from datetime import datetime
                     if "öz❤️ss" in status_select:
                         person = "öz❤️ss"
@@ -935,7 +965,7 @@ def show_favorites(fav_type, label):
                         person = "ss"
                     else:
                         person = ""
-                    now_str = datetime.now().strftime("%d %B %Y %A %H:%M")
+                    now_str = format_turkish_datetime(datetime.now())
                     doc_ref.update({"status": "watched", "watchedBy": person, "watchedAt": now_str})
                     st.success(f"✅ {fav['title']} durumu güncellendi: watched ({person})")
                     st.rerun()
@@ -1058,7 +1088,7 @@ for idx, fav in enumerate(watched_items, start=1):
                 doc_ref.update({"status":"to_watch","watchedBy":None,"watchedAt":None})
             else:
                 who = status_select.replace("watched (","").replace(")","")
-                now_str = datetime.now().strftime("%d %B %Y %A %H:%M")
+                now_str = format_turkish_datetime(datetime.now())
                 doc_ref.update({"status":"watched","watchedBy":who,"watchedAt":now_str})
             st.rerun()
 
