@@ -606,10 +606,10 @@ ICON_512 = "https://em-content.zobj.net/source/telegram/358/popcorn_1f37f.png"  
 
 st.markdown(
     f"""
-    <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"{ICON_180}\">\n
-    <link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"{ICON_192}\">\n
-    <link rel=\"icon\" type=\"image/png\" sizes=\"512x512\" href=\"{ICON_512}\">\n
-    <meta name="theme-color" content="#111111">\n
+    <link rel="apple-touch-icon" sizes="180x180" href="{ICON_180}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{ICON_192}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{ICON_512}">
+    <meta name="theme-color" content="#111111">
     """,
     unsafe_allow_html=True,
 )
