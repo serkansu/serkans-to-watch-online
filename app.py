@@ -339,7 +339,7 @@ import streamlit as st
 from firebase_setup import get_firestore
 
 # --- Cached Firestore favorites loader ---
-@st.cache_data(ttl=60)  # Cache Firestore favorites for 60 seconds
+@st.cache_data(ttl=240)  # Cache Firestore favorites for 240 seconds
 def load_favorites():
     db = get_firestore()
     movies = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "movie").stream()]
@@ -866,8 +866,11 @@ st.divider()
 st.subheader("❤️ İzlenecekler Listesi")
 
 # --- Toggle between To-Watch and Watched with a radio button ---
+# Persist fav_section selection in session_state
+if "fav_section" not in st.session_state:
+    st.session_state["fav_section"] = "📌 İzlenecekler"
 fav_section = st.radio(
-    "Liste türü:", ["📌 İzlenecekler", "🎬 İzlenenler"], index=0, horizontal=True
+    "Liste türü:", ["📌 İzlenecekler", "🎬 İzlenenler"], index=0, horizontal=True, key="fav_section"
 )
 
 sort_option = st.selectbox(
@@ -1101,7 +1104,7 @@ elif fav_section == "🎬 İzlenenler":
             # Try to parse Turkish date string (format: "%d %B %Y %A")
             # We convert Turkish months/days to English for parsing
             if not v:
-                return ""
+                return datetime.min
             s = str(v)
             # Reverse-translate Turkish months/days to English for parsing
             for eng, tr in TURKISH_MONTHS.items():
@@ -1112,12 +1115,12 @@ elif fav_section == "🎬 İzlenenler":
                 dt = datetime.strptime(s, "%d %B %Y %A")
                 return dt
             except Exception:
-                return ""
+                return datetime.min
         except Exception:
-            return ""
+            return datetime.min
     watched_items = sorted(
         watched_items,
-        key=lambda fav: _watched_sort_key(fav) if _watched_sort_key(fav) else "",
+        key=_watched_sort_key,
         reverse=True
     )
     for idx, fav in enumerate(watched_items, start=1):
@@ -1146,7 +1149,7 @@ elif fav_section == "🎬 İzlenenler":
             if emoji:
                 title_str += f" {emoji}"
             st.markdown(f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}")
-            # --- Comments Section (new: multiple comments) ---
+            # --- Comments Section (new: multiple comments, revised input) ---
             comment_key = f"comment_{fav['id']}"
             comments = fav.get("comments", [])
             if comments:
@@ -1155,25 +1158,35 @@ elif fav_section == "🎬 İzlenenler":
                     who = c.get("watchedBy", "")
                     date = c.get("date", "")
                     st.markdown(f"💬 {text} — ({who}) • {date}")
-            # Comment input area
-            comment_text = st.text_area(
-                "Yorum ekle",
-                value=st.session_state.get(comment_key, ""),
-                key=comment_key,
-                label_visibility="collapsed",
-                height=80,
-            )
+
+            # New comment input: text_area and watchedBy selectbox (no dependency on fav.get("watchedBy"))
+            input_cols = st.columns([3, 2])
+            with input_cols[0]:
+                comment_text = st.text_area(
+                    "Yorum ekle",
+                    value=st.session_state.get(comment_key, ""),
+                    key=comment_key,
+                    label_visibility="collapsed",
+                    height=80,
+                )
+            with input_cols[1]:
+                comment_wb_key = f"comment_wb_{fav['id']}"
+                comment_wb_val = st.selectbox(
+                    "Yorumu kim yaptı?",
+                    ["öz", "ss", "öz❤️ss"],
+                    key=comment_wb_key,
+                )
             comment_btn_key = f"comment_btn_{fav['id']}"
             if st.button("💬 Comment yap", key=comment_btn_key):
                 from datetime import datetime
                 now_str = format_turkish_datetime(datetime.now())
-                watched_by = fav.get("watchedBy", "")
                 comment_full = comment_text.strip()
-                if comment_full:
+                who_val = st.session_state.get(comment_wb_key, "")
+                if comment_full and who_val:
                     # Append to comments list
                     new_comment = {
                         "text": comment_full,
-                        "watchedBy": watched_by,
+                        "watchedBy": who_val,
                         "date": now_str,
                     }
                     new_comments = list(comments) if comments else []
