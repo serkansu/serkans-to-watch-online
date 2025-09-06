@@ -2,5 +2,12 @@ services:
   - type: web
     name: cineselect-manager-online
     env: python
+    plan: free             # veya starter/pro varsa onu yaz
+    branch: main           # hangi branch deploy edilecek
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run app.py --server.port $PORT
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    autoDeploy: true       # otomatik deploy istiyorsan true / kapatmak için false
+    healthCheckPath: /
+    healthCheckTimeoutSeconds: 120
+    runtime:
+      pythonVersion: 3.10  # senin kodun için stabil bir versiyon seç
