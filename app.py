@@ -74,6 +74,7 @@ def parse_turkish_or_iso_date(v):
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%dT%H:%M",
             "%Y-%m-%dT%H:%M:%S",
+            "%d/%m/%y",  # Add support for short Turkish/ISO date format
         ):
             try:
                 return _DT.strptime(s, fmt)
@@ -1090,6 +1091,7 @@ def show_favorites(fav_type, label):
                                     "blacklistedAt": None,
                                 })
                                 st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
+                                st.rerun()
                             elif status_select == "🖤 BL":
                                 doc_ref.update({
                                     "status": "blacklist",
@@ -1102,9 +1104,9 @@ def show_favorites(fav_type, label):
                                     "watchedAt": None,
                                 })
                                 st.success(f"✅ {fav['title']} blacklist'e taşındı! (CS: {cs_int} {emoji})")
+                                st.rerun()
                             # Clear the comment field after successful submission
                             _safe_set_state(comment_text_key, "")
-                            st.rerun()
                 elif status_select != current_status_str:
                     doc_ref = db.collection("favorites").document(fav["id"])
                     if status_select == "to_watch":
