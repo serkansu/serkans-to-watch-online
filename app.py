@@ -1696,356 +1696,39 @@ elif fav_section == "🖤 Blacklist":
             # New: always hide comment input by default; add Yorum Ekle expander in Options
         with cols[2]:
             with st.expander("✨ Options"):
-                # --- Comment edit/delete controls (Blacklist) ---
+                # --- Edit/delete comments for blacklist (fixed indent) ---
                 comments = (fav.get("comments") or [])
-                comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
-                if comments_sorted:
-                    for c_idx, c in enumerate(comments_sorted):
-                        _txt = c.get("text", "")
-                        _who = c.get("watchedBy", "")
-                        _date = c.get("date", "")
-                        cols_c = st.columns([3, 2])
-                        with cols_c[0]:
-                            st.write(f"💬 {_txt} — ({_who}) • {_date}")
-                        with cols_c[1]:
-                            if st.button("🗑️ Yorum Sil", key=f"bl_del_comment_{fav['id']}_{c_idx}"):
-                                new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                                db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-                                st.success("🗑️ Yorum silindi!")
-                                st.rerun()
-                            if st.button("✏️ Yorumu Düzenle", key=f"bl_edit_comment_{fav['id']}_{c_idx}"):
-                                _safe_set_state(f"bl_edit_mode_{fav['id']}_{c_idx}", True)
-                        if st.session_state.get(f"bl_edit_mode_{fav['id']}_{c_idx}", False):
-                            edit_text_key = f"bl_edit_text_{fav['id']}_{c_idx}"
-                            edit_who_key  = f"bl_edit_who_{fav['id']}_{c_idx}"
-                            if edit_text_key not in st.session_state:
-                                _safe_set_state(edit_text_key, _txt)
-                            if edit_who_key not in st.session_state:
-                                _safe_set_state(edit_who_key, _who or 'öz')
-                            ecols = st.columns([3,2])
-                            with ecols[0]:
-                                new_text = st.text_area("Yorumu düzenle", value=st.session_state[edit_text_key], key=edit_text_key, height=80, label_visibility="collapsed")
-                            with ecols[1]:
-                                new_who = st.selectbox("Yorumu kim yaptı?", ["öz","ss","öz❤️ss"], index=(["öz","ss","öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz","ss","öz❤️ss"] else 0), key=edit_who_key)
-                            if st.button("💾 Kaydet", key=f"bl_save_comment_{fav['id']}_{c_idx}"):
-                                from datetime import datetime as _dt
-                                now_str = format_turkish_datetime(_dt.now())
-                                comments_sorted[c_idx] = {"text": new_text.strip(), "watchedBy": new_who, "date": now_str}
-                                db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
-                                st.success("✏️ Yorum güncellendi!")
-                                _safe_set_state(f"bl_edit_mode_{fav['id']}_{c_idx}", False)
-                                st.rerun()
+                comments_sorted = sorted(
+                    comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True
+                )
 
-                # --- Add new comment (Blacklist) ---
-                with st.expander("💬 Yorum Ekle"):
-                    c_text_key = f"bl_new_comment_{fav['id']}"
-                    c_who_key  = f"bl_new_comment_who_{fav['id']}"
-                    if c_text_key not in st.session_state:
-                        _safe_set_state(c_text_key, "")
-                    if c_who_key not in st.session_state:
-                        _safe_set_state(c_who_key, "öz")
-                    icols = st.columns([3,2])
-                    with icols[0]:
-                        new_c_text = st.text_area("Yorum ekle", value=st.session_state[c_text_key], key=c_text_key, height=80, label_visibility="collapsed")
-                    with icols[1]:
-                        new_c_who = st.selectbox("Yorumu kim yaptı?", ["öz","ss","öz❤️ss"], index=(["öz","ss","öz❤️ss"].index(st.session_state[c_who_key]) if st.session_state[c_who_key] in ["öz","ss","öz❤️ss"] else 0), key=c_who_key)
-                    if st.button("💬 Comment yap", key=f"bl_comment_btn_{fav['id']}"):
-                        from datetime import datetime as _dt
-                        if new_c_text.strip():
-                            now_str = format_turkish_datetime(_dt.now())
-                            new_comments = list(comments) if comments else []
-                            new_comments.append({"text": new_c_text.strip(), "watchedBy": new_c_who, "date": now_str})
-                            db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-                            _safe_set_state(c_text_key, "")
-                            st.success("💬 Yorum kaydedildi!")
-                            st.rerun()
-
-                # --- Status selectbox for blacklist (moves between lists) ---
-                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
-                if fav.get("status") == "blacklist":
-                    current_status_str = "🖤 BL"
-                elif fav.get("status") == "to_watch":
-                    current_status_str = "to_watch"
-                elif fav.get("status") == "watched":
-                    wb = fav.get("watchedBy")
-                    current_status_str = wb if wb in ["öz","ss","öz❤️ss"] else "n/w"
-                else:
-                    current_status_str = "to_watch"
-
-                status_select = st.selectbox("Status", status_options, index=(status_options.index(current_status_str) if current_status_str in status_options else 0), key=f"bl_status_{fav['id']}")
-
-                from datetime import datetime as dt_bl
-                cs_prompt_needed = (status_select in ["öz","ss","öz❤️ss","🖤 BL"]) and status_select != current_status_str
-                cs_number_key = f"bl_cs_number_{fav['id']}"
-                cs_confirm_key = f"bl_cs_confirm_{fav['id']}"
-                c_text2_key   = f"bl_transit_comment_{fav['id']}"
-                c_who2_key    = f"bl_transit_comment_who_{fav['id']}"
-
-                if cs_prompt_needed:
-                    with st.expander("💬 Yorum / Onay"):
-                        cs_val_new = st.number_input("CineSelect Puanı (1-100)", min_value=1, max_value=100, value=int(fav.get("cineselectRating", 50)), step=1, key=cs_number_key)
-                        if c_text2_key not in st.session_state:
-                            _safe_set_state(c_text2_key, "")
-                        if c_who2_key not in st.session_state:
-                            _safe_set_state(c_who2_key, "öz")
-                        new_comment_text = st.text_area("Yorum ekle", value=st.session_state[c_text2_key], key=c_text2_key, height=80, label_visibility="collapsed")
-                        if status_select == "🖤 BL":
-                            new_comment_who = "🖤 BL"
-                        else:
-                            new_comment_who = st.selectbox("Yorumu kim yaptı?", ["öz","ss","öz❤️ss"], index=(["öz","ss","öz❤️ss"].index(st.session_state[c_who2_key]) if st.session_state[c_who2_key] in ["öz","ss","öz❤️ss"] else 0), key=c_who2_key)
-                        if st.button("✅ Onayla", key=cs_confirm_key):
-                            cs_int = int(cs_val_new)
-                            if cs_int < 50: emoji = "👎"
-                            elif cs_int < 70: emoji = "😐"
-                            elif cs_int < 80: emoji = "👍"
-                            elif cs_int < 90: emoji = "👍👍"
-                            else: emoji = "👍👍👍"
-                            now_str = format_turkish_datetime(dt_bl.now())
-                            comments2 = list(fav.get("comments") or [])
-                            if new_comment_text.strip():
-                                comments2.append({"text": new_comment_text.strip(), "watchedBy": new_comment_who, "date": now_str})
-                            doc_ref = db.collection("favorites").document(fav["id"])
-                            if status_select in ["öz","ss","öz❤️ss"]:
-                                doc_ref.update({
-                                    "status": "watched",
-                                    "watchedBy": status_select,
-                                    "watchedAt": now_str,
-                                    "cineselectRating": cs_int,
-                                    "watchedEmoji": emoji,
-                                    "comments": comments2,
-                                    "blacklistedBy": None,
-                                    "blacklistedAt": None,
-                                })
-                                st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
-                                st.rerun()
-                            elif status_select == "🖤 BL":
-                                doc_ref.update({
-                                    "status": "blacklist",
-                                    "blacklistedBy": "🖤 BL",
-                                    "blacklistedAt": now_str,
-                                    "cineselectRating": cs_int,
-                                    "watchedEmoji": emoji,
-                                    "comments": comments2,
-                                    "watchedBy": None,
-                                    "watchedAt": None,
-                                })
-                                st.success(f"✅ {fav['title']} blacklist'e taşındı! (CS: {cs_int} {emoji})")
-                                st.rerun()
-                elif status_select != current_status_str:
-                    doc_ref = db.collection("favorites").document(fav["id"])
-                    if status_select == "to_watch":
-                        doc_ref.update({
-                            "status": "to_watch",
-                            "watchedBy": None,
-                            "watchedAt": None,
-                            "watchedEmoji": None,
-                            "blacklistedBy": None,
-                            "blacklistedAt": None,
-                        })
-                        st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
-                        st.rerun()
-                    elif status_select == "n/w":
-                        now_str = format_turkish_datetime(dt_bl.now())
-                        doc_ref.update({
-                            "status": "watched",
-                            "watchedBy": None,
-                            "watchedAt": now_str,
-                            "cineselectRating": 60,
-                            "watchedEmoji": "😐",
-                            "blacklistedBy": None,
-                            "blacklistedAt": None,
-                        })
-                        st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
-                        st.rerun()
-                        cs_val_new = st.number_input(
-                            "CineSelect Puanı (1-100)",
-                            min_value=1,
-                            max_value=100,
-                            value=int(fav.get("cineselectRating", 50)),
-                            step=1,
-                            key=cs_number_key
-                        )
-                        if comment_text_key not in st.session_state:
-                            _safe_set_state(comment_text_key, "")
-                        if comment_who_key not in st.session_state:
-                            _safe_set_state(comment_who_key, "öz")
-                        new_comment_text = st.text_area(
-                            "Yorum ekle",
-                            value=st.session_state[comment_text_key],
-                            key=comment_text_key,
-                            height=80,
-                        )
-                        if status_select == "🖤 BL":
-                            new_comment_who = "🖤 BL"
-                        else:
-                            new_comment_who = st.selectbox(
-                                "Yorumu kim yaptı?",
-                                ["öz", "ss", "öz❤️ss"],
-                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
-                                key=comment_who_key
-                            )
-                        if st.button("✅ Onayla", key=cs_confirm_key):
-                            cs_int = int(cs_val_new)
-                            # Compute emoji
-                            if cs_int < 50:
-                                emoji_val = "👎"
-                            elif cs_int < 70:
-                                emoji_val = "😐"
-                            elif cs_int < 80:
-                                emoji_val = "👍"
-                            elif cs_int < 90:
-                                emoji_val = "👍👍"
-                            else:
-                                emoji_val = "👍👍👍"
-                            now_str = format_turkish_datetime(dt_bl.now())
-                            comments = fav.get("comments", [])
-                            if comments is None:
-                                comments = []
-                            if new_comment_text.strip():
-                                new_comment = {
-                                    "text": new_comment_text.strip(),
-                                    "watchedBy": new_comment_who,
-                                    "date": now_str
-                                }
-                                comments = list(comments) if comments else []
-                                comments.append(new_comment)
-                            doc_ref = db.collection("favorites").document(fav["id"])
-                            if status_select in ["öz", "ss", "öz❤️ss"]:
-                                doc_ref.update({
-                                    "status": "watched",
-                                    "watchedBy": status_select,
-                                    "watchedAt": now_str,
-                                    "cineselectRating": cs_int,
-                                    "watchedEmoji": emoji_val,
-                                    "comments": comments,
-                                    "blacklistedBy": None,
-                                    "blacklistedAt": None,
-                                })
-                                st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji_val}")
-                            elif status_select == "🖤 BL":
-                                doc_ref.update({
-                                    "status": "blacklist",
-                                    "blacklistedBy": "🖤 BL",
-                                    "blacklistedAt": now_str,
-                                    "cineselectRating": cs_int,
-                                    "watchedEmoji": emoji_val,
-                                    "comments": comments,
-                                    "watchedBy": None,
-                                    "watchedAt": None,
-                                })
-                                st.success(f"✅ {fav['title']} blacklist'e taşındı! (CS: {cs_int} {emoji_val})")
-                            _safe_set_state(comment_text_key, "")
-                            st.rerun()
-                elif status_select != current_status_str:
-                    doc_ref = db.collection("favorites").document(fav["id"])
-                    if status_select == "to_watch":
-                        doc_ref.update({
-                            "status": "to_watch",
-                            "watchedBy": None,
-                            "watchedAt": None,
-                            "watchedEmoji": None,
-                            "blacklistedBy": None,
-                            "blacklistedAt": None,
-                        })
-                        st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
-                        st.rerun()
-                    elif status_select == "n/w":
-                        now_str = format_turkish_datetime(dt_bl.now())
-                        doc_ref.update({
-                            "status": "watched",
-                            "watchedBy": None,
-                            "watchedAt": now_str,
-                            "cineselectRating": 60,
-                            "watchedEmoji": "😐",
-                            "blacklistedBy": None,
-                            "blacklistedAt": None,
-                        })
-                        st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
-                        st.rerun()
-                # --- Edit CineSelect rating button ---
-                if st.button("✏️", key=f"edit_bl_{fav['id']}"):
-                    _safe_set_state(f"edit_mode_bl_{fav['id']}", True)
-                # --- Refresh IMDb/RT ratings button ---
-                if st.button("🔄 Refresh", key=f"refresh_bl_{fav['id']}"):
-                    imdb_id = fav.get("imdb")
-                    if imdb_id:
-                        stats = get_ratings(imdb_id)
-                        imdb_rating = stats.get("imdb_rating") if stats else None
-                        rt_score = stats.get("rt") if stats else None
-                        db.collection("favorites").document(fav["id"]).update({
-                            "imdbRating": float(imdb_rating) if imdb_rating is not None else 0.0,
-                            "rt": int(rt_score) if rt_score is not None else 0,
-                        })
-                        st.success(f"✅ IMDb/RT güncellendi: {fav.get('title','?')}")
-                        st.rerun()
-                # --- Edit mode UI for CineSelect rating and blacklistedAt date ---
-                if st.session_state.get(f"edit_mode_bl_{fav['id']}", False):
-                    i_key = f"input_bl_{fav['id']}"
-                    current = _clamp_cs(fav.get("cineselectRating", 50))
-                    if i_key not in st.session_state:
-                        _safe_set_state(i_key, current)
-                    st.number_input(
-                        "🎯 CS:",
-                        min_value=1,
-                        max_value=100,
-                        value=st.session_state[i_key],
-                        step=1,
-                        key=i_key
-                    )
-                    # --- Date input for blacklistedAt ---
-                    import datetime as dtmod
-                    date_key = f"blacklistedAt_{fav['id']}"
-                    # Try to parse blacklistedAt to a date, fallback to today
-                    raw_blacklistedAt = fav.get("blacklistedAt")
-                    default_date = parse_turkish_or_iso_date(raw_blacklistedAt)
-                    if not default_date or default_date.year < 1900:
-                        default_date = dtmod.date.today()
-                    new_date = st.date_input("Blacklist tarihi", value=default_date, key=date_key)
-                    if st.button("✅ Kaydet", key=f"save_bl_{fav['id']}"):
-                        new_val = _clamp_cs(st.session_state.get(i_key, current))
-                        # Compute emoji based on new_val (keep 🖤 as main emoji)
-                        # Format blacklistedAt in Turkish date (no time)
-                        blacklistedAt_str = format_turkish_datetime(dtmod.datetime.combine(new_date, dtmod.datetime.min.time()))
-                        db.collection("favorites").document(fav["id"]).update({
-                            "cineselectRating": new_val,
-                            "blacklistedAt": blacklistedAt_str
-                        })
-                        st.success(f"✅ {fav.get('title','?')} güncellendi (CS={new_val} 🖤, Blacklist tarihi: {blacklistedAt_str}).")
-                        _safe_set_state(f"edit_mode_bl_{fav['id']}", False)
-                        st.rerun()
-
-st.markdown("---")
-if st.button("🔝 Go to Top Again"):
-    st.rerun()
-
-st.markdown("<p style='text-align: center; color: gray;'>Created by <b>SS</b></p>", unsafe_allow_html=True)
-
-                # --- Edit/delete comments for blacklist ---
                 if comments_sorted:
                     for c_idx, c in enumerate(comments_sorted):
                         text = c.get("text", "")
-                        who = c.get("watchedBy", "")
+                        who  = c.get("watchedBy", "")
                         date = c.get("date", "")
-                        # Delete comment button
+
+                        # Sil
                         if st.button("🗑️ Yorum Sil", key=f"del_bl_comment_{fav['id']}_{c_idx}"):
                             new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                            db.collection("favorites").document(fav["id"]).update({
-                                "comments": new_comments
-                            })
+                            db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                             st.success("🗑️ Yorum silindi!")
                             st.rerun()
-                        # Edit comment button
+
+                        # Düzenleme modunu aç
                         if st.button("✏️ Yorumu Düzenle", key=f"edit_bl_comment_{fav['id']}_{c_idx}"):
-                            st.session_state[f"edit_bl_comment_mode_{fav['id']}_{c_idx}"] = True
-                        # Edit comment UI
+                            _safe_set_state(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", True)
+
+                        # Düzenleme UI
                         if st.session_state.get(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", False):
-                            edit_text_key = f"edit_comment_text_{fav['id']}_{c_idx}_safe"
-                            edit_who_key = f"edit_comment_wb_{fav['id']}_{c_idx}_safe"
+                            edit_text_key = f"edit_bl_text_{fav['id']}_{c_idx}"
+                            edit_who_key  = f"edit_bl_who_{fav['id']}_{c_idx}"
                             if edit_text_key not in st.session_state:
                                 _safe_set_state(edit_text_key, text)
                             if edit_who_key not in st.session_state:
                                 _safe_set_state(edit_who_key, who or "öz")
-                            edit_cols = st.columns([3,2])
+
+                            edit_cols = st.columns([3, 2])
                             with edit_cols[0]:
                                 new_text = st.text_area(
                                     "Yorumu düzenle",
@@ -2058,19 +1741,20 @@ st.markdown("<p style='text-align: center; color: gray;'>Created by <b>SS</b></p
                                 new_who = st.selectbox(
                                     "Yorumu kim yaptı?",
                                     ["öz", "ss", "öz❤️ss"],
-                                    index=(["öz","ss","öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz","ss","öz❤️ss"] else 0),
+                                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key])
+                                           if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
                                     key=edit_who_key
                                 )
+
                             if st.button("💾 Kaydet", key=f"save_bl_comment_{fav['id']}_{c_idx}"):
+                                from datetime import datetime as _dt
                                 now_str = format_turkish_datetime(_dt.now())
                                 comments_sorted[c_idx] = {
                                     "text": new_text.strip(),
                                     "watchedBy": new_who,
                                     "date": now_str
                                 }
-                                db.collection("favorites").document(fav["id"]).update({
-                                    "comments": comments_sorted
-                                })
+                                db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
                                 st.success("✏️ Yorum güncellendi!")
-                                st.session_state[f"edit_bl_comment_mode_{fav['id']}_{c_idx}"] = False
+                                _safe_set_state(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", False)
                                 st.rerun()
