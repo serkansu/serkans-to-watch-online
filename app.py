@@ -1228,22 +1228,29 @@ elif fav_section == "🎬 İzlenenler":
             title_str = f"**{idx}. {fav.get('title')} ({fav.get('year')})**"
             if emoji:
                 title_str += f" {emoji}"
-            st.markdown(f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}")
-            # --- Comments Section (new: multiple comments, revised input) ---
-            comment_key = f"comment_{fav['id']}"
+            # --- Comments Section: compact, inside the film info block, just under title ---
             comments = fav.get("comments", [])
-            # --- Sort comments by date descending before displaying ---
-        from datetime import datetime as _dt
-        comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
-        if comments_sorted:
-            for c_idx, c in enumerate(comments_sorted):
-                    text = c.get("text", "")
-                    who = c.get("watchedBy", "")
-                    date = c.get("date", "")
-                    # Only show the comment text, author, date inline
-                    st.markdown(f"💬 {text} — ({who}) • {date}")
-
+            from datetime import datetime as _dt
+            comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
+            # Main info block with comments inside (just under title)
+            st.markdown(
+                f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('watchedBy','?')} | ⏰ {fav.get('watchedAt','?')}",
+                unsafe_allow_html=True
+            )
+            if comments_sorted:
+                st.markdown(
+                    '<div style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
+                    + "<br>".join(
+                        [
+                            f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}"
+                            for c in comments_sorted
+                        ]
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
             # Only show new comment input when edit mode for this favorite is active
+            comment_key = f"comment_{fav['id']}"
             if st.session_state.get(f"edit_mode_w_{fav['id']}", False):
                 input_cols = st.columns([3, 2])
                 with input_cols[0]:
@@ -1285,6 +1292,8 @@ elif fav_section == "🎬 İzlenenler":
         with cols[2]:
             with st.expander("⚙️ Options"):
                 # --- Comment delete/edit buttons for each comment ---
+                comments = fav.get("comments", [])
+                comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
                 if comments_sorted:
                     for c_idx, c in enumerate(comments_sorted):
                         text = c.get("text", "")
@@ -1319,7 +1328,7 @@ elif fav_section == "🎬 İzlenenler":
                                     key=f"edit_comment_wb_{fav['id']}_{c_idx}"
                                 )
                             if st.button("💾 Kaydet", key=f"save_comment_{fav['id']}_{c_idx}"):
-                                now_str = format_turkish_datetime(datetime.now())
+                                now_str = format_turkish_datetime(_dt.now())
                                 comments_sorted[c_idx] = {
                                     "text": new_text.strip(),
                                     "watchedBy": new_who,
@@ -1498,6 +1507,8 @@ elif fav_section == "🎬 İzlenenler":
                     date_key = f"watchedAt_{fav['id']}"
                     raw_watchedAt = fav.get("watchedAt")
                     default_date = parse_turkish_or_iso_date(raw_watchedAt)
+                    if not default_date or default_date.year < 1900:
+                        default_date = dtmod.date.today()
                     new_date = st.date_input("İzlenme tarihi", value=default_date, key=date_key)
                     if st.button("✅ Kaydet", key=f"save_w_{fav['id']}"):
                         new_val = _clamp_cs(st.session_state.get(i_key, current))
@@ -1573,60 +1584,28 @@ elif fav_section == "🖤 Blacklist":
             # Show 🖤 emoji next to title
             emoji = "🖤"
             title_str = f"**{idx}. {fav.get('title')} ({fav.get('year')})** {emoji}"
-            st.markdown(f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('blacklistedBy','?')} | ⏰ {fav.get('blacklistedAt','?')}")
-            # --- Comments Section (copy of watched) ---
-            comment_key = f"bl_comment_{fav['id']}"
+            # --- Comments Section: compact, inside the film info block, just under title ---
             comments = fav.get("comments", [])
+            from datetime import datetime as _dt
             comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
+            st.markdown(
+                f"{title_str} | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating','N/A')} | 👤 {fav.get('blacklistedBy','?')} | ⏰ {fav.get('blacklistedAt','?')}",
+                unsafe_allow_html=True
+            )
             if comments_sorted:
-                for c_idx, c in enumerate(comments_sorted):
-                    text = c.get("text", "")
-                    who = c.get("watchedBy", "")
-                    date = c.get("date", "")
-                    col_comment, col_delete, col_edit = st.columns([7, 1, 1])
-                    with col_comment:
-                        st.markdown(f"💬 {text} — ({who}) • {date}")
-                    with col_delete:
-                        if st.button("🗑️", key=f"del_bl_comment_{fav['id']}_{c_idx}"):
-                            new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                            db.collection("favorites").document(fav["id"]).update({
-                                "comments": new_comments
-                            })
-                            st.success("🗑️ Yorum silindi!")
-                            st.rerun()
-                    with col_edit:
-                        if st.button("✏️", key=f"edit_bl_comment_{fav['id']}_{c_idx}"):
-                            st.session_state[f"edit_bl_comment_mode_{fav['id']}_{c_idx}"] = True
-                    if st.session_state.get(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", False):
-                        edit_cols = st.columns([3,2])
-                        with edit_cols[0]:
-                            new_text = st.text_area(
-                                "Yorumu düzenle",
-                                value=text,
-                                key=f"edit_bl_comment_text_{fav['id']}_{c_idx}",
-                                height=80,
-                            )
-                        with edit_cols[1]:
-                            new_who = st.selectbox(
-                                "Yorumu kim yaptı?",
-                                ["öz", "ss", "öz❤️ss"],
-                                index=(["öz","ss","öz❤️ss"].index(who) if who in ["öz","ss","öz❤️ss"] else 0),
-                                key=f"edit_bl_comment_wb_{fav['id']}_{c_idx}"
-                            )
-                        if st.button("💾 Kaydet", key=f"save_bl_comment_{fav['id']}_{c_idx}"):
-                            now_str = format_turkish_datetime(_dt.now())
-                            comments_sorted[c_idx] = {
-                                "text": new_text.strip(),
-                                "watchedBy": new_who,
-                                "date": now_str
-                            }
-                            db.collection("favorites").document(fav["id"]).update({
-                                "comments": comments_sorted
-                            })
-                            st.success("✏️ Yorum güncellendi!")
-                            st.session_state[f"edit_bl_comment_mode_{fav['id']}_{c_idx}"] = False
-                            st.rerun()
+                st.markdown(
+                    '<div style="background-color: #f6f6f6; border-radius: 6px; padding: 8px 12px; margin: 8px 0 0 0;">'
+                    + "<br>".join(
+                        [
+                            f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}"
+                            for c in comments_sorted
+                        ]
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
             # Only show new comment input when edit mode for this favorite is active
+            comment_key = f"bl_comment_{fav['id']}"
             if st.session_state.get(f"edit_mode_bl_{fav['id']}", False):
                 input_cols = st.columns([3, 2])
                 with input_cols[0]:
@@ -1838,6 +1817,8 @@ elif fav_section == "🖤 Blacklist":
                     # Try to parse blacklistedAt to a date, fallback to today
                     raw_blacklistedAt = fav.get("blacklistedAt")
                     default_date = parse_turkish_or_iso_date(raw_blacklistedAt)
+                    if not default_date or default_date.year < 1900:
+                        default_date = dtmod.date.today()
                     new_date = st.date_input("Blacklist tarihi", value=default_date, key=date_key)
                     if st.button("✅ Kaydet", key=f"save_bl_{fav['id']}"):
                         new_val = _clamp_cs(st.session_state.get(i_key, current))
