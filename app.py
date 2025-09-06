@@ -888,8 +888,9 @@ def get_sort_key(fav):
 
 def show_favorites(fav_type, label):
     docs = db.collection("favorites").where("type", "==", fav_type).stream()
+    # Only show items with status == "to_watch"
     favorites = sorted(
-        [doc.to_dict() for doc in docs],
+        [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") == "to_watch"],
         key=get_sort_key,
         reverse=(st.session_state.get("fav_sort", "CineSelect") != "CineSelect")
     )
@@ -944,12 +945,45 @@ def show_favorites(fav_type, label):
                 index=status_options.index(current_status_str) if current_status_str in status_options else 0,
                 key=f"status_{fav['id']}"
             )
-            # Update Firestore if status changed
-            if status_select != current_status_str:
+            from datetime import datetime
+            # --- Enhanced status handling logic ---
+            # For ["öz", "ss", "öz❤️ss"], if status changed, show slider+confirm instead of immediate update
+            cs_prompt_needed = status_select in ["öz", "ss", "öz❤️ss"] and status_select != current_status_str
+            cs_slider_key = f"fav_cs_slider_{fav['id']}"
+            cs_confirm_key = f"fav_cs_confirm_{fav['id']}"
+            cs_val = fav.get("cineselectRating", 50)
+            if cs_prompt_needed:
+                # Show slider and confirm button
+                if cs_slider_key not in st.session_state:
+                    st.session_state[cs_slider_key] = int(cs_val) if isinstance(cs_val, int) else 50
+                cs_val_new = st.slider("CineSelect Puanı (1-100)", 1, 100, st.session_state[cs_slider_key], key=cs_slider_key)
+                if st.button("✅ Onayla", key=cs_confirm_key):
+                    cs_int = int(cs_val_new)
+                    # Compute emoji
+                    if cs_int < 50:
+                        emoji = "👎"
+                    elif cs_int < 70:
+                        emoji = "😐"
+                    elif cs_int < 80:
+                        emoji = "👍"
+                    elif cs_int < 90:
+                        emoji = "👍👍"
+                    else:
+                        emoji = "👍👍👍"
+                    now_str = format_turkish_datetime(datetime.now())
+                    db.collection("favorites").document(fav["id"]).update({
+                        "status": "watched",
+                        "watchedBy": status_select,
+                        "watchedAt": now_str,
+                        "cineselectRating": cs_int,
+                        "watchedEmoji": emoji,
+                    })
+                    st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
+                    st.rerun()
+            elif status_select != current_status_str:
                 doc_ref = db.collection("favorites").document(fav["id"])
-                from datetime import datetime
                 if status_select == "to_watch":
-                    doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None})
+                    doc_ref.update({"status": "to_watch", "watchedBy": None, "watchedAt": None, "watchedEmoji": None})
                     st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                     st.rerun()
                 elif status_select == "n/w":
@@ -964,10 +998,8 @@ def show_favorites(fav_type, label):
                     st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
                     st.rerun()
                 else:
-                    now_str = format_turkish_datetime(datetime.now())
-                    doc_ref.update({"status": "watched", "watchedBy": status_select, "watchedAt": now_str})
-                    st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
-                    st.rerun()
+                    # For ["öz", "ss", "öz❤️ss"], handled above
+                    pass
         with cols[3]:
             if st.button("✏️", key=f"edit_{fav['id']}"):
                 st.session_state[f"edit_mode_{fav['id']}"] = True
