@@ -386,20 +386,25 @@ from firebase_setup import get_firestore
 @st.cache_data(ttl=240)  # Cache Firestore favorites for 240 seconds
 def load_favorites():
     db = get_firestore()
-    movies = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "movie").stream()]
-    shows  = [doc.to_dict() for doc in db.collection("favorites").where("type", "==", "show").stream()]
-    # Normalize type for all items (movie/show) according to rules
+    # Fetch with IN queries to include legacy values
+    movie_docs = db.collection("favorites").where("type", "in", ["movie", "film"]).stream()
+    show_docs  = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"]).stream()
+
+    movies = [doc.to_dict() for doc in movie_docs]
+    shows  = [doc.to_dict() for doc in show_docs]
+
+    # Normalize type for all items
     for item in movies:
         t = (item.get("type") or "").lower()
         if t in ["tv", "tvshow", "show", "series"]:
             item["type"] = "show"
-        elif t in ["movie", "film"]:
+        else:
             item["type"] = "movie"
     for item in shows:
         t = (item.get("type") or "").lower()
         if t in ["tv", "tvshow", "show", "series"]:
             item["type"] = "show"
-        elif t in ["movie", "film"]:
+        else:
             item["type"] = "movie"
     return movies, shows
 def fix_invalid_imdb_ids(data):
@@ -574,9 +579,9 @@ def sync_with_firebase(sort_mode="imdb"):
                 imdb_rating=_it.get("imdbRating"),
                 rt_score=_it.get("rt"),
             )
-    # ---- Filter out watched items (only export "to_watch" items)
-    movies_to_export = [x for x in favorites_data.get("movies", []) if x.get("status") == "to_watch"]
-    shows_to_export = [x for x in favorites_data.get("shows", []) if x.get("status") == "to_watch"]
+    # ---- Filter out watched items (only export "to_watch" items, treat missing/blank status as to_watch)
+    movies_to_export = [x for x in favorites_data.get("movies", []) if (x.get("status") in (None, "", "to_watch"))]
+    shows_to_export  = [x for x in favorites_data.get("shows",  []) if (x.get("status") in (None, "", "to_watch"))]
 
     # ---- Apply export ordering
     sorted_movies = sort_flat_for_export(movies_to_export, sort_mode)
