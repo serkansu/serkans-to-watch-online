@@ -648,7 +648,7 @@ def show_favorites_count():
     series_count = len(list(series_docs))
     st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
 
-with st.expander("⚙️ Options"):
+with st.expander("✨ Options"):
     # 1. Go to Top
     if st.button("🏠 Go to Top"):
         st.rerun()
@@ -994,7 +994,7 @@ def show_favorites(fav_type, label):
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
         with cols[2]:
-            with st.expander("⚙️ Options"):
+            with st.expander("✨ Options"):
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
@@ -1267,48 +1267,9 @@ elif fav_section == "🎬 İzlenenler":
                     + "</div>",
                     unsafe_allow_html=True,
                 )
-            # Only show new comment input when edit mode for this favorite is active
-            comment_key = f"comment_{fav['id']}"
-            if st.session_state.get(f"edit_mode_w_{fav['id']}", False):
-                input_cols = st.columns([3, 2])
-                with input_cols[0]:
-                    comment_text = st.text_area(
-                        "Yorum ekle",
-                        value=st.session_state.get(comment_key, ""),
-                        key=comment_key,
-                        label_visibility="collapsed",
-                        height=80,
-                    )
-                with input_cols[1]:
-                    comment_wb_key = f"comment_wb_{fav['id']}"
-                    comment_wb_val = st.selectbox(
-                        "Yorumu kim yaptı?",
-                        ["öz", "ss", "öz❤️ss"],
-                        key=comment_wb_key,
-                    )
-                comment_btn_key = f"comment_btn_{fav['id']}"
-                if st.button("💬 Comment yap", key=comment_btn_key):
-                    from datetime import datetime
-                    now_str = format_turkish_datetime(datetime.now())
-                    comment_full = comment_text.strip()
-                    who_val = st.session_state.get(comment_wb_key, "")
-                    if comment_full and who_val:
-                        # Append to comments list
-                        new_comment = {
-                            "text": comment_full,
-                            "watchedBy": who_val,
-                            "date": now_str,
-                        }
-                        new_comments = list(comments) if comments else []
-                        new_comments.append(new_comment)
-                        db.collection("favorites").document(fav["id"]).update({
-                            "comments": new_comments
-                        })
-                        _safe_set_state(comment_key, "")
-                        st.success("💬 Yorum kaydedildi!")
-                        st.rerun()
+            # --- New: Move comment input inside Options > Yorum Ekle expander ---
         with cols[2]:
-            with st.expander("⚙️ Options"):
+            with st.expander("✨ Options"):
                 # --- Comment delete/edit buttons for each comment ---
                 comments = fav.get("comments", [])
                 comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
@@ -1358,6 +1319,46 @@ elif fav_section == "🎬 İzlenenler":
                                 st.success("✏️ Yorum güncellendi!")
                                 st.session_state[f"edit_comment_mode_{fav['id']}_{c_idx}"] = False
                                 st.rerun()
+                # --- New: Add Yorum Ekle expander for new comment input ---
+                with st.expander("💬 Yorum Ekle"):
+                    comment_key = f"comment_{fav['id']}"
+                    input_cols = st.columns([3, 2])
+                    with input_cols[0]:
+                        comment_text = st.text_area(
+                            "Yorum ekle",
+                            value=st.session_state.get(comment_key, ""),
+                            key=comment_key,
+                            label_visibility="collapsed",
+                            height=80,
+                        )
+                    with input_cols[1]:
+                        comment_wb_key = f"comment_wb_{fav['id']}"
+                        comment_wb_val = st.selectbox(
+                            "Yorumu kim yaptı?",
+                            ["öz", "ss", "öz❤️ss"],
+                            key=comment_wb_key,
+                        )
+                    comment_btn_key = f"comment_btn_{fav['id']}"
+                    if st.button("💬 Comment yap", key=comment_btn_key):
+                        from datetime import datetime
+                        now_str = format_turkish_datetime(datetime.now())
+                        comment_full = comment_text.strip()
+                        who_val = st.session_state.get(comment_wb_key, "")
+                        if comment_full and who_val:
+                            # Append to comments list
+                            new_comment = {
+                                "text": comment_full,
+                                "watchedBy": who_val,
+                                "date": now_str,
+                            }
+                            new_comments = list(comments) if comments else []
+                            new_comments.append(new_comment)
+                            db.collection("favorites").document(fav["id"]).update({
+                                "comments": new_comments
+                            })
+                            _safe_set_state(comment_key, "")
+                            st.success("💬 Yorum kaydedildi!")
+                            st.rerun()
                 # --- Status selectbox (short labels) ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 if fav.get("status") == "to_watch":
@@ -1449,6 +1450,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "blacklistedBy": None,
                                     "blacklistedAt": None,
                                 })
+                                st.rerun()
                                 st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
                             elif status_select == "🖤 BL":
                                 doc_ref.update({
@@ -1461,9 +1463,9 @@ elif fav_section == "🎬 İzlenenler":
                                     "watchedBy": None,
                                     "watchedAt": None,
                                 })
+                                st.rerun()
                                 st.success(f"✅ {fav['title']} blacklist'e taşındı! (CS: {cs_int} {emoji})")
                             _safe_set_state(comment_text_key, "")
-                            st.rerun()
                 elif status_select != current_status_str:
                     doc_ref = db.collection("favorites").document(fav["id"])
                     if status_select == "to_watch":
@@ -1622,46 +1624,9 @@ elif fav_section == "🖤 Blacklist":
                     + "</div>",
                     unsafe_allow_html=True,
                 )
-            # Only show new comment input when edit mode for this favorite is active
-            comment_key = f"bl_comment_{fav['id']}"
-            if st.session_state.get(f"edit_mode_bl_{fav['id']}", False):
-                input_cols = st.columns([3, 2])
-                with input_cols[0]:
-                    comment_text = st.text_area(
-                        "Yorum ekle",
-                        value=st.session_state.get(comment_key, ""),
-                        key=comment_key,
-                        label_visibility="collapsed",
-                        height=80,
-                    )
-                with input_cols[1]:
-                    comment_wb_key = f"bl_comment_wb_{fav['id']}"
-                    comment_wb_val = st.selectbox(
-                        "Yorumu kim yaptı?",
-                        ["öz", "ss", "öz❤️ss"],
-                        key=comment_wb_key,
-                    )
-                comment_btn_key = f"bl_comment_btn_{fav['id']}"
-                if st.button("💬 Comment yap", key=comment_btn_key):
-                    now_str = format_turkish_datetime(_dt.now())
-                    comment_full = comment_text.strip()
-                    who_val = st.session_state.get(comment_wb_key, "")
-                    if comment_full and who_val:
-                        new_comment = {
-                            "text": comment_full,
-                            "watchedBy": who_val,
-                            "date": now_str,
-                        }
-                        new_comments = list(comments) if comments else []
-                        new_comments.append(new_comment)
-                        db.collection("favorites").document(fav["id"]).update({
-                            "comments": new_comments
-                        })
-                        _safe_set_state(comment_key, "")
-                        st.success("💬 Yorum kaydedildi!")
-                        st.rerun()
+            # New: always hide comment input by default; add Yorum Ekle expander in Options
         with cols[2]:
-            with st.expander("⚙️ Options"):
+            with st.expander("✨ Options"):
                 # --- Status selectbox for blacklist ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 # Compute current status string
@@ -1856,3 +1821,42 @@ if st.button("🔝 Go to Top Again"):
     st.rerun()
 
 st.markdown("<p style='text-align: center; color: gray;'>Created by <b>SS</b></p>", unsafe_allow_html=True)
+
+                # --- New: Add Yorum Ekle expander for new comment input ---
+                with st.expander("💬 Yorum Ekle"):
+                    comment_key = f"bl_comment_{fav['id']}"
+                    input_cols = st.columns([3, 2])
+                    with input_cols[0]:
+                        comment_text = st.text_area(
+                            "Yorum ekle",
+                            value=st.session_state.get(comment_key, ""),
+                            key=comment_key,
+                            label_visibility="collapsed",
+                            height=80,
+                        )
+                    with input_cols[1]:
+                        comment_wb_key = f"bl_comment_wb_{fav['id']}"
+                        comment_wb_val = st.selectbox(
+                            "Yorumu kim yaptı?",
+                            ["öz", "ss", "öz❤️ss"],
+                            key=comment_wb_key,
+                        )
+                    comment_btn_key = f"bl_comment_btn_{fav['id']}"
+                    if st.button("💬 Comment yap", key=comment_btn_key):
+                        now_str = format_turkish_datetime(_dt.now())
+                        comment_full = comment_text.strip()
+                        who_val = st.session_state.get(comment_wb_key, "")
+                        if comment_full and who_val:
+                            new_comment = {
+                                "text": comment_full,
+                                "watchedBy": who_val,
+                                "date": now_str,
+                            }
+                            new_comments = list(comments) if comments else []
+                            new_comments.append(new_comment)
+                            db.collection("favorites").document(fav["id"]).update({
+                                "comments": new_comments
+                            })
+                            _safe_set_state(comment_key, "")
+                            st.success("💬 Yorum kaydedildi!")
+                            st.rerun()
