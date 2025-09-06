@@ -43,6 +43,54 @@ def format_turkish_datetime(dt):
     for eng, tr in TURKISH_DAYS.items():
         s = s.replace(eng, tr)
     return s
+
+# --- Robust Turkish/ISO date parser ---
+from datetime import datetime as _DT
+
+def parse_turkish_or_iso_date(v):
+    """Return a datetime for various stored date formats.
+    Supports:
+      - Already-a-datetime (incl. Firestore Timestamp / DatetimeWithNanoseconds)
+      - Turkish formatted strings like "05 Eylül 2025 Cuma"
+      - ISO strings like "2025-09-06" or "2025-09-06 08:44:00" or "2025-09-06T08:44:00Z"
+    On failure returns datetime.min.
+    """
+    try:
+        if not v:
+            return _DT.min
+        # If it's already datetime-like (not pure str), convert via isoformat for safety
+        if not isinstance(v, str) and hasattr(v, "isoformat"):
+            try:
+                return _DT.fromisoformat(v.isoformat().replace("Z", ""))
+            except Exception:
+                # Best effort: cast to string and keep parsing below
+                v = v.isoformat()
+        s = str(v)
+        # Replace Turkish month/day names with English for parsing
+        for eng, tr in TURKISH_MONTHS.items():
+            s = s.replace(tr, eng)
+        for eng, tr in TURKISH_DAYS.items():
+            s = s.replace(tr, eng)
+        # Try multiple known formats
+        for fmt in (
+            "%d %B %Y %A",
+            "%Y-%m-%d",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+        ):
+            try:
+                return _DT.strptime(s, fmt)
+            except Exception:
+                pass
+        # Final fallback: fromisoformat if possible
+        try:
+            return _DT.fromisoformat(s.replace("Z", ""))
+        except Exception:
+            return _DT.min
+    except Exception:
+        return _DT.min
 # --- JSON export helpers: make Firestore timestamps serializable & strip non-export fields ---
 from datetime import datetime
 
@@ -944,7 +992,7 @@ def show_favorites(fav_type, label):
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
         with cols[2]:
             # --- Status selectbox (short labels) ---
-            status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w"]
+            status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
             # Compute current status string with new logic
             if fav.get("status") == "to_watch":
                 current_status_str = "to_watch"
@@ -1138,26 +1186,7 @@ elif fav_section == "🎬 İzlenenler":
     watched_docs = db.collection("favorites").where("status", "==", "watched").stream()
     watched_items = [doc.to_dict() for doc in watched_docs]
     def _watched_sort_key(fav):
-        from datetime import datetime
-        v = fav.get("watchedAt")
-        try:
-            # Try to parse Turkish date string (format: "%d %B %Y %A")
-            # We convert Turkish months/days to English for parsing
-            if not v:
-                return datetime.min
-            s = str(v)
-            # Reverse-translate Turkish months/days to English for parsing
-            for eng, tr in TURKISH_MONTHS.items():
-                s = s.replace(tr, eng)
-            for eng, tr in TURKISH_DAYS.items():
-                s = s.replace(tr, eng)
-            try:
-                dt = datetime.strptime(s, "%d %B %Y %A")
-                return dt
-            except Exception:
-                return datetime.min
-        except Exception:
-            return datetime.min
+        return parse_turkish_or_iso_date(fav.get("watchedAt"))
     # Conditional sorting based on selected sort option
     if sort_option_watched == "Watched Date":
         watched_items = sorted(watched_items, key=_watched_sort_key, reverse=True)
@@ -1306,7 +1335,7 @@ elif fav_section == "🎬 İzlenenler":
         with cols[2]:
             with st.expander("⚙️ Options"):
                 # --- Status selectbox (short labels) ---
-                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w"]
+                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 if fav.get("status") == "to_watch":
                     current_status_str = "to_watch"
                 elif fav.get("status") == "watched":
@@ -1467,22 +1496,7 @@ elif fav_section == "🖤 Blacklist":
     blacklisted_items = [doc.to_dict() for doc in blacklisted_docs]
     from datetime import datetime as _dt
     def _blacklist_sort_key(fav):
-        v = fav.get("blacklistedAt")
-        try:
-            if not v:
-                return _dt.min
-            s = str(v)
-            for eng, tr in TURKISH_MONTHS.items():
-                s = s.replace(tr, eng)
-            for eng, tr in TURKISH_DAYS.items():
-                s = s.replace(tr, eng)
-            try:
-                dt = _dt.strptime(s, "%d %B %Y %A")
-                return dt
-            except Exception:
-                return _dt.min
-        except Exception:
-            return _dt.min
+        return parse_turkish_or_iso_date(fav.get("blacklistedAt"))
     # Conditional sorting based on selected sort option
     if sort_option_blacklist == "Blacklist Date":
         blacklisted_items = sorted(blacklisted_items, key=_blacklist_sort_key, reverse=True)
