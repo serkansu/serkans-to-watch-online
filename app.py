@@ -1857,6 +1857,7 @@ elif fav_section == "🖤 Blacklist":
                         })
                         st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
                         st.rerun()
+                        cs_val_new = st.number_input(
                             "CineSelect Puanı (1-100)",
                             min_value=1,
                             max_value=100,
