@@ -1032,23 +1032,18 @@ def show_favorites(fav_type, label):
                 # --- Yorum Ekle expander for İzlenecekler (to-watch) ---
                 with st.expander("💬 Yorum Ekle"):
                     comment_key = f"to_watch_comment_{fav['id']}"
-                    input_cols = st.columns([4, 2])
-                    with input_cols[0]:
-                        comment_text = st.text_area(
-                            "Yorum ekle",
-                            value=st.session_state.get(comment_key, ""),
-                            key=comment_key,
-                            label_visibility="visible",
-                            height=100,
-                        )
-                    with input_cols[1]:
-                        comment_wb_key = f"to_watch_comment_wb_{fav['id']}"
-                        comment_wb_val = st.selectbox(
-                            "Yorumu kim yaptı?",
-                            ["öz", "ss", "öz❤️ss"],
-                            key=comment_wb_key,
-                            label_visibility="visible",
-                        )
+                    comment_text = st.text_area(
+                        "Yorum ekle",
+                        value=st.session_state.get(comment_key, ""),
+                        key=comment_key,
+                        height=120,
+                    )
+                    comment_wb_key = f"to_watch_comment_wb_{fav['id']}"
+                    comment_wb_val = st.selectbox(
+                        "Yorumu kim yaptı?",
+                        ["öz", "ss", "öz❤️ss"],
+                        key=comment_wb_key,
+                    )
                     comment_btn_key = f"to_watch_comment_btn_{fav['id']}"
                     if st.button("💬 Comment yap", key=comment_btn_key):
                         from datetime import datetime as _dt
@@ -1402,22 +1397,18 @@ elif fav_section == "🎬 İzlenenler":
                 # --- New: Add Yorum Ekle expander for new comment input (keep only here, after edit/delete UI, before status selectbox) ---
                 with st.expander("💬 Yorum Ekle"):
                     comment_key = f"comment_{fav['id']}"
-                    input_cols = st.columns([3, 2])
-                    with input_cols[0]:
-                        comment_text = st.text_area(
-                            "Yorum ekle",
-                            value=st.session_state.get(comment_key, ""),
-                            key=comment_key,
-                            label_visibility="collapsed",
-                            height=80,
-                        )
-                    with input_cols[1]:
-                        comment_wb_key = f"comment_wb_{fav['id']}"
-                        comment_wb_val = st.selectbox(
-                            "Yorumu kim yaptı?",
-                            ["öz", "ss", "öz❤️ss"],
-                            key=comment_wb_key,
-                        )
+                    comment_text = st.text_area(
+                        "Yorum ekle",
+                        value=st.session_state.get(comment_key, ""),
+                        key=comment_key,
+                        height=120,
+                    )
+                    comment_wb_key = f"comment_wb_{fav['id']}"
+                    comment_wb_val = st.selectbox(
+                        "Yorumu kim yaptı?",
+                        ["öz", "ss", "öz❤️ss"],
+                        key=comment_wb_key,
+                    )
                     comment_btn_key = f"comment_btn_{fav['id']}"
                     if st.button("💬 Comment yap", key=comment_btn_key):
                         from datetime import datetime
@@ -1697,23 +1688,20 @@ elif fav_section == "🖤 Blacklist":
             # --- Yorum Ekle expander for Blacklist ---
             with st.expander("💬 Yorum Ekle"):
                 bl_comment_key = f"bl_comment_{fav['id']}"
-                input_cols = st.columns([4, 2])
-                with input_cols[0]:
-                    bl_comment_text = st.text_area(
-                        "Yorum ekle",
-                        value=st.session_state.get(bl_comment_key, ""),
-                        key=bl_comment_key,
-                        label_visibility="visible",
-                        height=100,
-                    )
-                with input_cols[1]:
-                    bl_comment_wb_key = f"bl_comment_wb_{fav['id']}"
-                    bl_comment_wb_val = st.selectbox(
-                        "Yorumu kim yaptı?",
-                        ["öz", "ss", "öz❤️ss"],
-                        key=bl_comment_wb_key,
-                        label_visibility="visible",
-                    )
+                bl_comment_text = st.text_area(
+                    "Yorum ekle",
+                    value=st.session_state.get(bl_comment_key, ""),
+                    key=bl_comment_key,
+                    label_visibility="visible",
+                    height=100,
+                )
+                bl_comment_wb_key = f"bl_comment_wb_{fav['id']}"
+                bl_comment_wb_val = st.selectbox(
+                    "Yorumu kim yaptı?",
+                    ["öz", "ss", "öz❤️ss"],
+                    key=bl_comment_wb_key,
+                    label_visibility="visible",
+                )
                 bl_comment_btn_key = f"bl_comment_btn_{fav['id']}"
                 if st.button("💬 Comment yap", key=bl_comment_btn_key):
                     from datetime import datetime as _dt
@@ -1733,6 +1721,9 @@ elif fav_section == "🖤 Blacklist":
                         })
                         _safe_set_state(bl_comment_key, "")
                         st.success("💬 Yorum kaydedildi!")
+                        # Show updated comments immediately
+                        for c in new_comments:
+                            st.write(f"💬 {c.get('text','')} — ({c.get('watchedBy','')}) • {c.get('date','')}")
                         st.rerun()
         with cols[2]:
             with st.expander("✨ Options"):
