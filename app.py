@@ -1077,8 +1077,8 @@ def show_favorites(fav_type, label):
                     edit_who_key = f"fav_comment_edit_who_{fav['id']}_{c_idx}"
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
-                    if edit_who_key not in st.session_state:
-                        _safe_set_state(edit_who_key, who or "ss")
+                    # Replace initialization with default_who assignment
+                    default_who = (who or "ss")
                     edit_cols = st.columns([3, 2])
                     with edit_cols[0]:
                         new_text = st.text_area(
@@ -1091,7 +1091,7 @@ def show_favorites(fav_type, label):
                         new_who = st.selectbox(
                             "Yorumu kim yaptı?",
                             ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
+                            index=( ["öz", "ss", "öz❤️ss"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss"] else 1 ),
                             key=edit_who_key
                         )
                     save_col, cancel_col = st.columns([1, 1])
@@ -1497,6 +1497,12 @@ elif fav_section == "🎬 İzlenenler":
                     if st.button("🗑️", key=f"watched_comment_del_{fav['id']}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        # also update local copies so UI reflects immediately
+                        fav["comments"] = new_comments
+                        for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
                         st.success("🗑️ Yorum silindi!")
                         st.rerun()
                 # Inline edit UI if in edit mode
@@ -1505,8 +1511,8 @@ elif fav_section == "🎬 İzlenenler":
                     edit_who_key = f"watched_comment_edit_who_{fav['id']}_{c_idx}"
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
-                    if edit_who_key not in st.session_state:
-                        _safe_set_state(edit_who_key, who or "ss")
+                    # Replace initialization with default_who assignment
+                    default_who = (who or "ss")
                     edit_cols = st.columns([3, 2])
                     with edit_cols[0]:
                         new_text = st.text_area(
@@ -1519,7 +1525,7 @@ elif fav_section == "🎬 İzlenenler":
                         new_who = st.selectbox(
                             "Yorumu kim yaptı?",
                             ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
+                            index=( ["öz", "ss", "öz❤️ss"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss"] else 1 ),
                             key=edit_who_key
                         )
                     save_col, cancel_col = st.columns([1, 1])
@@ -1532,6 +1538,12 @@ elif fav_section == "🎬 İzlenenler":
                                 "date": now_str
                             }
                             db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                            # sync session_state and local fav with latest comments
+                            fav["comments"] = comments_sorted
+                            for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
+                                if item.get("id") == fav["id"]:
+                                    item["comments"] = comments_sorted
+                                    break
                             st.success("✏️ Yorum güncellendi!")
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
