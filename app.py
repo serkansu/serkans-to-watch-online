@@ -1160,15 +1160,19 @@ def show_favorites(fav_type, label):
                             "date": now_str,
                         }
                         new_comments.append(new_comment)
+                        # Always update Firestore with the new comments array
                         db.collection("favorites").document(fav["id"]).update({
                             "comments": new_comments
                         })
+                        # Update fav["comments"] and session_state immediately
                         fav["comments"] = new_comments
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
+                        # Clear both the text area and selectbox from session state so widget resets
                         _safe_set_state(comment_key, "")
+                        _safe_set_state(comment_wb_key, "ss")
                         st.success("💬 Yorum kaydedildi!")
                         st.rerun()
         with cols[2]:
