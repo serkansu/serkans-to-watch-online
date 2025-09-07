@@ -1149,16 +1149,23 @@ def show_favorites(fav_type, label):
                             "date": now_str,
                         }
                         new_comments.append(new_comment)
+                        # 1. Firestore update
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        # 2. Update fav["comments"]
                         fav["comments"] = new_comments
+                        # 3. session_state güncellemesi
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                                      else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
+                        # 4. _safe_set_state(comment_key, "")
                         _safe_set_state(comment_key, "")
+                        # 5. _safe_set_state(comment_wb_key, "ss")
                         _safe_set_state(comment_wb_key, "ss")
+                        # 6. st.success
                         st.success("💬 Yorum kaydedildi!")
+                        # 7. st.rerun()
                         st.rerun()
         with cols[2]:
             with st.expander("✨ Options"):
