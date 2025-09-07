@@ -1699,11 +1699,35 @@ if fav_section == "📌 İzlenecekler":
     page_size = 50
     # Determine which list to show based on media_type
     if media_type == "Movie":
-        favorites = st.session_state.get("favorite_movies", [])
+        raw_list = st.session_state.get("favorite_movies", [])
     elif media_type == "TV Show":
-        favorites = st.session_state.get("favorite_series", [])
+        raw_list = st.session_state.get("favorite_series", [])
     else:
-        favorites = []
+        raw_list = []
+
+    # Only show to_watch items (missing/blank treated as to_watch)
+    favorites = [f for f in raw_list if (f.get("status") in (None, "", "to_watch"))]
+
+    # Sort according to current selection
+    sort_name = st.session_state.get("fav_sort", "CineSelect")
+    def _key_for(it: dict):
+        try:
+            if sort_name == "CineSelect":
+                return int(it.get("cineselectRating") or 0)
+            elif sort_name == "IMDb":
+                v = it.get("imdbRating")
+                return float(v) if v not in (None, "", "N/A") else 0.0
+            elif sort_name == "RT":
+                v = it.get("rt")
+                return float(v) if v not in (None, "", "N/A") else 0.0
+            elif sort_name == "Year":
+                return int(str(it.get("year") or "0").strip() or 0)
+        except Exception:
+            return 0
+        return 0
+    favorites = sorted(favorites, key=_key_for, reverse=True)
+
+    # Pagination
     end_idx = (st.session_state["to_watch_page"] + 1) * page_size
     favorites_to_render = favorites[:end_idx]
     for idx, fav in enumerate(favorites_to_render, start=1):
