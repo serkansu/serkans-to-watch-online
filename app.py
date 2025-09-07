@@ -658,6 +658,14 @@ deploy_placeholder.markdown(
     unsafe_allow_html=True
 )
 
+# --- Favorites count helper (moved above usage) ---
+def show_favorites_count():
+    movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
+    series_docs = db.collection("favorites").where("type", "==", "show").stream()
+    movie_count = len(list(movie_docs))
+    series_count = len(list(series_docs))
+    st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
+
 # --- Quick Toolbar (always visible) ---
 # Ensure required defaults
 if "show_posters" not in st.session_state:
@@ -681,14 +689,8 @@ with tcol3:
 # --- /Quick Toolbar ---
 
 
+#
 # --- Options Expander (All action buttons grouped) ---
-def show_favorites_count():
-    movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
-    series_docs = db.collection("favorites").where("type", "==", "show").stream()
-    movie_count = len(list(movie_docs))
-    series_count = len(list(series_docs))
-    st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
-
 with st.expander("✨ Options"):
     # 1. Go to Top
     if st.button("🏠 Go to Top"):
@@ -1007,32 +1009,53 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label):
-    # Fetch all favorites and apply filtering manually
-    all_docs = db.collection("favorites").stream()
-    favorites = [doc.to_dict() for doc in all_docs]
-
-    if fav_type == "movie":
-        valid_types = ["movie", "film"]
-    else:
-        valid_types = ["show"]  # normalize edilmiş değer hep "show"
-
-    # Filter by type
-    favorites = [f for f in favorites if (f.get("type") or "").lower() in valid_types]
-
-    # Filter by status (default: treat None/"" as to_watch)
-    favorites = [f for f in favorites if f.get("status") in (None, "", "to_watch")]
-
-    # Apply sorting
+    # Fetch from Firestore: only items with status == "to_watch"
+    to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
+    favorites = [doc.to_dict() for doc in to_watch_docs]
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
-    # --- Incremental scroll for Izlenecekler (explicit visible_count approach) ---
-    if "to_watch_visible_count" not in st.session_state:
-        st.session_state["to_watch_visible_count"] = 50
-    visible_count = st.session_state["to_watch_visible_count"]
-    favorites_to_show = favorites[:visible_count]
+    # --- Incremental scroll for Izlenecekler ---
+    page_size = 50
+    page_key = f"to_watch_page_{fav_type}"
+    if page_key not in st.session_state:
+        st.session_state[page_key] = 1
+
+    # Slice favorites according to current page
+    display_favorites = favorites[:page_size * st.session_state[page_key]]
+
+    # Render only sliced favorites
+    favorites = display_favorites
+
+    # Inject JS to detect scroll bottom and auto-increase page
+    scroll_js = f"""
+    <script>
+    var bottomSent = false;
+    window.onscroll = function() {{
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 10) {{
+            if (!bottomSent) {{
+                fetch('/_stcore/streamlit/command', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{'command': 'increment_page', 'key': '{page_key}'}})
+                }});
+                bottomSent = true;
+            }}
+        }} else {{
+            bottomSent = false;
+        }}
+    }};
+    </script>
+    """
+    st.markdown(scroll_js, unsafe_allow_html=True)
+
+    # Handle page increment command
+    if "_command" in st.session_state and st.session_state["_command"].get("command") == "increment_page" and st.session_state["_command"].get("key") == page_key:
+        st.session_state[page_key] += 1
+        del st.session_state["_command"]
+        st.rerun()
 
     st.markdown(f"### 📁 {label}")
-    for idx, fav in enumerate(favorites_to_show):
+    for idx, fav in enumerate(favorites):
         imdb_display = (
             f"{float(fav.get('imdbRating', 0) or 0):.1f}"
             if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
@@ -1344,12 +1367,6 @@ def show_favorites(fav_type, label):
                             st.rerun()
                     with cols_edit[1]:
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
-
-    # --- Daha fazla yükle butonu ---
-    if visible_count < len(favorites):
-        if st.button("⬇️ Daha fazla yükle", key=f"load_more_{fav_type}"):
-            st.session_state["to_watch_visible_count"] = visible_count + 50
-            st.rerun()
 
 if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
@@ -2338,9 +2355,3 @@ elif fav_section == "🖤 Blacklist":
                     st.session_state["fav_section"] = "🖤 Blacklist"
                     st.success(f"❌ {fav['title']} tamamen silindi!")
                     st.rerun()
-
-    # "Daha fazla yükle" button for incremental scroll (Blacklist)
-    if st.session_state.get("blacklist_visible_count", 50) < len(blacklisted_items):
-        if st.button("📥 Daha fazla yükle", key=f"load_more_blacklist_{st.session_state['blacklist_visible_count']}"):
-            st.session_state["blacklist_visible_count"] += 50
-            st.rerun()
