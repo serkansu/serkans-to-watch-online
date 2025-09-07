@@ -1339,14 +1339,14 @@ def show_favorites(fav_type, label):
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                         st.rerun()
-                    elif status_select == "n/w":
+                    elif status_select in ["öz", "ss", "öz❤️ss", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
                         doc_ref.update({
                             "status": "watched",
-                            "watchedBy": None,
+                            "watchedBy": None if status_select == "n/w" else status_select,
                             "watchedAt": now_str,
-                            "cineselectRating": 60,
-                            "watchedEmoji": "😐",
+                            "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
+                            "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
                             "blacklistedBy": None,
                             "blacklistedAt": None,
                         })
@@ -1355,16 +1355,16 @@ def show_favorites(fav_type, label):
                             if item.get("id") == fav["id"]:
                                 item.update({
                                     "status": "watched",
-                                    "watchedBy": None,
+                                    "watchedBy": None if status_select == "n/w" else status_select,
                                     "watchedAt": now_str,
-                                    "cineselectRating": 60,
-                                    "watchedEmoji": "😐",
+                                    "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
+                                    "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
                                     "blacklistedBy": None,
                                     "blacklistedAt": None,
                                 })
                                 break
                         st.session_state["fav_section"] = "🎬 İzlenenler"
-                        st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
+                        st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
                         st.rerun()
                 # --- Action buttons: edit, pin, etc. ---
                 if st.button("✏️", key=f"edit_{fav['id']}"):
