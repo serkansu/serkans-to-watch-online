@@ -1078,24 +1078,24 @@ def show_favorites(fav_type, label):
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
             comments = fav.get("comments", [])
-from datetime import datetime as _dt
-def parse_turkish_or_iso_date(date_str):
-    if not date_str or not isinstance(date_str, str):
-        return None
-    formats = [
-        "%d/%m/%y",          # 07/09/25
-        "%d/%m/%Y",          # 07/09/2025
-        "%Y-%m-%d",          # 2025-09-07
-        "%Y-%m-%d %H:%M:%S", # 2025-09-07 14:30:00
-        "%d.%m.%Y %H:%M",    # 07.09.2025 14:30
-    ]
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    return None
-comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
+            from datetime import datetime as _dt
+            def parse_turkish_or_iso_date(date_str):
+                if not date_str or not isinstance(date_str, str):
+                    return None
+                formats = [
+                    "%d/%m/%y",          # 07/09/25
+                    "%d/%m/%Y",          # 07/09/2025
+                    "%Y-%m-%d",          # 2025-09-07
+                    "%Y-%m-%d %H:%M:%S", # 2025-09-07 14:30:00
+                    "%d.%m.%Y %H:%M",    # 07.09.2025 14:30
+                ]
+                for fmt in formats:
+                    try:
+                        return datetime.strptime(date_str, fmt)
+                    except ValueError:
+                        continue
+                return None
+            comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
             for c_idx, c in enumerate(comments_sorted):
                 text = c.get("text", "")
                 who = c.get("watchedBy", "")
