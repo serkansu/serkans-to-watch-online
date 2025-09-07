@@ -1069,12 +1069,11 @@ def show_favorites(fav_type, label):
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
                     if edit_who_key not in st.session_state:
-                        _safe_set_state(edit_who_key, who or "öz")
+                        _safe_set_state(edit_who_key, who or "ss")
                     edit_cols = st.columns([3, 2])
                     with edit_cols[0]:
                         new_text = st.text_area(
                             "Yorumu düzenle",
-                            value=st.session_state[edit_text_key],
                             key=edit_text_key,
                             height=80,
                             label_visibility="collapsed",
@@ -1083,7 +1082,7 @@ def show_favorites(fav_type, label):
                         new_who = st.selectbox(
                             "Yorumu kim yaptı?",
                             ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
+                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
                             key=edit_who_key
                         )
                     save_col, cancel_col = st.columns([1, 1])
@@ -1107,9 +1106,12 @@ def show_favorites(fav_type, label):
             with st.expander("💬 Yorum Ekle"):
                 comment_key = f"fav_comment_add_{fav['id']}"
                 comment_wb_key = f"fav_comment_add_wb_{fav['id']}"
+                if comment_key not in st.session_state:
+                    _safe_set_state(comment_key, "")
+                if comment_wb_key not in st.session_state:
+                    _safe_set_state(comment_wb_key, "ss")
                 comment_text = st.text_area(
                     "Yorum ekle",
-                    value=st.session_state.get(comment_key, ""),
                     key=comment_key,
                     height=80,
                     label_visibility="visible"
@@ -1117,6 +1119,7 @@ def show_favorites(fav_type, label):
                 comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
                     ["öz", "ss", "öz❤️ss"],
+                    index=1,
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
@@ -1186,10 +1189,9 @@ def show_favorites(fav_type, label):
                         if comment_text_key not in st.session_state:
                             _safe_set_state(comment_text_key, "")
                         if comment_who_key not in st.session_state:
-                            _safe_set_state(comment_who_key, "öz")
+                            _safe_set_state(comment_who_key, "ss")
                         new_comment_text = st.text_area(
                             "Yorum ekle",
-                            value=st.session_state[comment_text_key],
                             key=comment_text_key,
                             height=80,
                             label_visibility="collapsed",
@@ -1200,7 +1202,7 @@ def show_favorites(fav_type, label):
                             new_comment_who = st.selectbox(
                                 "Yorumu kim yaptı?",
                                 ["öz", "ss", "öz❤️ss"],
-                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
+                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
                                 key=comment_who_key
                             )
                         if st.button("✅ Onayla", key=cs_confirm_key):
@@ -1426,12 +1428,11 @@ elif fav_section == "🎬 İzlenenler":
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
                     if edit_who_key not in st.session_state:
-                        _safe_set_state(edit_who_key, who or "öz")
+                        _safe_set_state(edit_who_key, who or "ss")
                     edit_cols = st.columns([3, 2])
                     with edit_cols[0]:
                         new_text = st.text_area(
                             "Yorumu düzenle",
-                            value=st.session_state[edit_text_key],
                             key=edit_text_key,
                             height=80,
                             label_visibility="collapsed",
@@ -1440,7 +1441,7 @@ elif fav_section == "🎬 İzlenenler":
                         new_who = st.selectbox(
                             "Yorumu kim yaptı?",
                             ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
+                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
                             key=edit_who_key
                         )
                     save_col, cancel_col = st.columns([1, 1])
@@ -1464,9 +1465,12 @@ elif fav_section == "🎬 İzlenenler":
             with st.expander("💬 Yorum Ekle"):
                 comment_key = f"watched_comment_add_{fav['id']}"
                 comment_wb_key = f"watched_comment_add_wb_{fav['id']}"
+                if comment_key not in st.session_state:
+                    _safe_set_state(comment_key, "")
+                if comment_wb_key not in st.session_state:
+                    _safe_set_state(comment_wb_key, "ss")
                 comment_text = st.text_area(
                     "Yorum ekle",
-                    value=st.session_state.get(comment_key, ""),
                     key=comment_key,
                     height=100,
                     label_visibility="visible"
@@ -1474,6 +1478,7 @@ elif fav_section == "🎬 İzlenenler":
                 comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
                     ["öz", "ss", "öz❤️ss"],
+                    index=1,
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
@@ -1538,10 +1543,9 @@ elif fav_section == "🎬 İzlenenler":
                         if comment_text_key not in st.session_state:
                             _safe_set_state(comment_text_key, "")
                         if comment_who_key not in st.session_state:
-                            _safe_set_state(comment_who_key, "öz")
+                            _safe_set_state(comment_who_key, "ss")
                         new_comment_text = st.text_area(
                             "Yorum ekle",
-                            value=st.session_state[comment_text_key],
                             key=comment_text_key,
                             height=80,
                             label_visibility="collapsed",
@@ -1552,7 +1556,7 @@ elif fav_section == "🎬 İzlenenler":
                             new_comment_who = st.selectbox(
                                 "Yorumu kim yaptı?",
                                 ["öz", "ss", "öz❤️ss"],
-                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
+                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
                                 key=comment_who_key
                             )
                         if st.button("✅ Onayla", key=cs_confirm_key):
