@@ -1344,7 +1344,7 @@ if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        show_favorites("series", "Diziler")
+        show_favorites("show", "Diziler")
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
