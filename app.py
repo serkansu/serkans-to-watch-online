@@ -435,8 +435,8 @@ def sort_flat_for_export(items, mode):
                 year = int(str(it.get("year", "0")).strip() or 0)
             except Exception:
                 year = 0
-            # For reverse=True (see return), negate CineSelect so it sorts DESC
-            return (-cs, -imdb, -year)
+            # For reverse=True (see return), sort by (cs, imdb, year) descending
+            return (cs, imdb, year)
         elif mode == "imdb":
             v = it.get("imdbRating")
             try:
@@ -461,7 +461,7 @@ def sort_flat_for_export(items, mode):
             year = int(str(it.get("year", "0")).strip() or 0)
         except Exception:
             year = 0
-        return (-cs, -imdb, -year)
+        return (cs, imdb, year)
 
     # cc -> descending (reverse=True); imdb/year -> descending (reverse=True)
     return sorted(items or [], key=key_fn, reverse=True)
@@ -1061,7 +1061,8 @@ def show_favorites(fav_type, label):
                         "Yorumu kim yaptı?",
                         ["öz", "ss", "öz❤️ss"],
                         key=comment_wb_key,
-                        label_visibility="visible"
+                        label_visibility="visible",
+                        index=1   # set "ss" as default
                     )
                 comment_btn_key = f"to_watch_comment_btn_{fav['id']}"
                 # Track new_comments for immediate display after adding
@@ -1089,6 +1090,64 @@ def show_favorites(fav_type, label):
                         st.rerun()
         with cols[2]:
             with st.expander("✨ Options"):
+                # --- Comment delete/edit buttons for each comment (like İzlenenler) ---
+                comments = fav.get("comments", [])
+                from datetime import datetime as _dt
+                comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
+                if comments_sorted:
+                    for c_idx, c in enumerate(comments_sorted):
+                        text = c.get("text", "")
+                        who = c.get("watchedBy", "")
+                        date = c.get("date", "")
+                        # Delete comment button
+                        if st.button("🗑️ Yorum Sil", key=f"to_watch_del_comment_{fav['id']}_{c_idx}"):
+                            new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
+                            db.collection("favorites").document(fav["id"]).update({
+                                "comments": new_comments
+                            })
+                            st.success("🗑️ Yorum silindi!")
+                            st.rerun()
+                        # Edit comment button
+                        if st.button("✏️ Yorumu Düzenle", key=f"to_watch_edit_comment_{fav['id']}_{c_idx}"):
+                            st.session_state[f"to_watch_edit_comment_mode_{fav['id']}_{c_idx}"] = True
+                        # Edit comment UI
+                        if st.session_state.get(f"to_watch_edit_comment_mode_{fav['id']}_{c_idx}", False):
+                            edit_text_key = f"to_watch_edit_comment_text_{fav['id']}_{c_idx}_safe"
+                            edit_who_key = f"to_watch_edit_comment_wb_{fav['id']}_{c_idx}_safe"
+                            # Session state safety for keys
+                            if edit_text_key not in st.session_state:
+                                _safe_set_state(edit_text_key, text)
+                            if edit_who_key not in st.session_state:
+                                _safe_set_state(edit_who_key, who or "öz")
+                            edit_cols = st.columns([3,2])
+                            with edit_cols[0]:
+                                new_text = st.text_area(
+                                    "Yorumu düzenle",
+                                    value=st.session_state[edit_text_key],
+                                    key=edit_text_key,
+                                    height=80,
+                                    label_visibility="collapsed",
+                                )
+                            with edit_cols[1]:
+                                new_who = st.selectbox(
+                                    "Yorumu kim yaptı?",
+                                    ["öz", "ss", "öz❤️ss"],
+                                    index=(["öz","ss","öz❤️ss"].index(st.session_state[edit_who_key]) if st.session_state[edit_who_key] in ["öz","ss","öz❤️ss"] else 0),
+                                    key=edit_who_key
+                                )
+                            if st.button("💾 Kaydet", key=f"to_watch_save_comment_{fav['id']}_{c_idx}"):
+                                now_str = format_turkish_datetime(_dt.now())
+                                comments_sorted[c_idx] = {
+                                    "text": new_text.strip(),
+                                    "watchedBy": new_who,
+                                    "date": now_str
+                                }
+                                db.collection("favorites").document(fav["id"]).update({
+                                    "comments": comments_sorted
+                                })
+                                st.success("✏️ Yorum güncellendi!")
+                                st.session_state[f"to_watch_edit_comment_mode_{fav['id']}_{c_idx}"] = False
+                                st.rerun()
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
