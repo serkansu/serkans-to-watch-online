@@ -1120,9 +1120,21 @@ def show_favorites(fav_type, label):
                         st.rerun()
                 with comment_row_cols[2]:
                     if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
+                        # 1. Firestore update
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                        _update_comments(fav, new_comments)
+                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        # 2. Update fav["comments"]
+                        fav["comments"] = new_comments
+                        # 3. Update session_state copy
+                        fav_type_val = fav.get("type", "movie")
+                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
+                        # 4. No input to reset for delete
+                        # 5. Show success
                         st.success("🗑️ Yorum silindi!")
+                        # 6. Rerun
                         st.rerun()
                 # Inline edit UI if in edit mode
                 if st.session_state.get(edit_mode_key, False):
@@ -1150,14 +1162,26 @@ def show_favorites(fav_type, label):
                     with save_col:
                         if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
                             now_str = format_turkish_datetime(_dt.now())
+                            # 1. Firestore update
                             comments_sorted[c_idx] = {
                                 "text": new_text.strip(),
                                 "watchedBy": new_who,
                                 "date": now_str
                             }
-                            _update_comments(fav, comments_sorted)
-                            st.success("✏️ Yorum güncellendi!")
+                            db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                            # 2. Update fav["comments"]
+                            fav["comments"] = comments_sorted
+                            # 3. Update session_state copy
+                            fav_type_val = fav.get("type", "movie")
+                            for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                                if item.get("id") == fav["id"]:
+                                    item["comments"] = comments_sorted
+                                    break
+                            # 4. Reset edit mode
                             _safe_set_state(edit_mode_key, False)
+                            # 5. Show success
+                            st.success("✏️ Yorum güncellendi!")
+                            # 6. Rerun
                             st.rerun()
                     with cancel_col:
                         if st.button("❌ İptal", key=f"to_watch_comment_cancel_{fav['id']}_{c_idx}"):
@@ -1184,23 +1208,35 @@ def show_favorites(fav_type, label):
                     label_visibility="visible"
                 )
                 comment_btn_key = f"to_watch_comment_add_btn_{fav['id']}"
-                comments = fav.get("comments", [])
-                new_comments = list(comments) if comments else []
+                comments_existing = fav.get("comments", [])
+                new_comments = list(comments_existing) if comments_existing else []
                 if st.button("💬 Comment yap", key=comment_btn_key):
                     now_str = format_turkish_datetime(_dt.now())
                     comment_full = comment_text.strip()
                     who_val = st.session_state.get(comment_wb_key, "")
                     if comment_full and who_val:
+                        # 1. Firestore update
                         new_comment = {
                             "text": comment_full,
                             "watchedBy": who_val,
                             "date": now_str,
                         }
                         new_comments.append(new_comment)
-                        _update_comments(fav, new_comments)
+                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        # 2. Update fav["comments"]
+                        fav["comments"] = new_comments
+                        # 3. Update session_state copy
+                        fav_type_val = fav.get("type", "movie")
+                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
+                        # 4. Reset input state
                         _safe_set_state(comment_key, "")
                         _safe_set_state(comment_wb_key, "ss")
+                        # 5. Show success
                         st.success("💬 Yorum kaydedildi!")
+                        # 6. Rerun
                         st.rerun()
         with cols[2]:
             with st.expander("✨ Options"):
@@ -1411,12 +1447,18 @@ def render_favorite(fav, idx):
                     st.rerun()
             with comment_row_cols[2]:
                 if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
-                    # 1. Update Firestore
+                    # 1. Firestore update first
                     new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                    _update_comments(fav, new_comments)
-                    # 2. (already done in _update_comments)
-                    # 3. (already done in _update_comments)
-                    # 4. No input state to reset for delete
+                    db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                    # 2. Update fav["comments"]
+                    fav["comments"] = new_comments
+                    # 3. Update session_state copy
+                    fav_type_val = fav.get("type", "movie")
+                    for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                        if item.get("id") == fav["id"]:
+                            item["comments"] = new_comments
+                            break
+                    # 4. No input to reset for delete
                     # 5. Show success
                     st.success("🗑️ Yorum silindi!")
                     # 6. Rerun
@@ -1447,16 +1489,22 @@ def render_favorite(fav, idx):
                 with save_col:
                     if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
                         now_str = format_turkish_datetime(_dt.now())
-                        # 1. Update Firestore and local/session state via _update_comments
+                        # 1. Firestore update first
                         comments_sorted[c_idx] = {
                             "text": new_text.strip(),
                             "watchedBy": new_who,
                             "date": now_str
                         }
-                        _update_comments(fav, comments_sorted)
-                        # 2. (already done in _update_comments)
-                        # 3. (already done in _update_comments)
-                        # 4. Reset edit mode state
+                        db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                        # 2. Update fav["comments"]
+                        fav["comments"] = comments_sorted
+                        # 3. Update session_state copy
+                        fav_type_val = fav.get("type", "movie")
+                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = comments_sorted
+                                break
+                        # 4. Reset edit mode
                         _safe_set_state(edit_mode_key, False)
                         # 5. Show success
                         st.success("✏️ Yorum güncellendi!")
@@ -1487,24 +1535,30 @@ def render_favorite(fav, idx):
                 label_visibility="visible"
             )
             comment_btn_key = f"to_watch_comment_add_btn_{fav['id']}"
-            comments = fav.get("comments", [])
-            new_comments = list(comments) if comments else []
+            comments_existing = fav.get("comments", [])
+            new_comments = list(comments_existing) if comments_existing else []
             if st.button("💬 Comment yap", key=comment_btn_key):
                 now_str = format_turkish_datetime(_dt.now())
                 comment_full = comment_text.strip()
                 who_val = st.session_state.get(comment_wb_key, "")
                 if comment_full and who_val:
-                    # 1. Update Firestore first
+                    # 1. Firestore update first
                     new_comment = {
                         "text": comment_full,
                         "watchedBy": who_val,
                         "date": now_str,
                     }
                     new_comments.append(new_comment)
-                    _update_comments(fav, new_comments)
-                    # 2. (already done in _update_comments)
-                    # 3. (already done in _update_comments)
-                    # 4. Reset input states
+                    db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                    # 2. Update fav["comments"]
+                    fav["comments"] = new_comments
+                    # 3. Update session_state copy
+                    fav_type_val = fav.get("type", "movie")
+                    for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                        if item.get("id") == fav["id"]:
+                            item["comments"] = new_comments
+                            break
+                    # 4. Reset input state
                     _safe_set_state(comment_key, "")
                     _safe_set_state(comment_wb_key, "ss")
                     # 5. Show success
