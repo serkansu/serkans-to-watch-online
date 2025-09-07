@@ -1007,15 +1007,22 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label):
-    # Fetch from Firestore: only items with status == "to_watch"
-    to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
-    favorites = [doc.to_dict() for doc in to_watch_docs]
-    # Flexible type matching for movies and shows
+    # Fetch all favorites and apply filtering manually
+    all_docs = db.collection("favorites").stream()
+    favorites = [doc.to_dict() for doc in all_docs]
+
     if fav_type == "movie":
         valid_types = ["movie", "film"]
     else:
-        valid_types = ["show", "series", "tv", "tvshow"]
+        valid_types = ["show"]  # normalize edilmiş değer hep "show"
+
+    # Filter by type
     favorites = [f for f in favorites if (f.get("type") or "").lower() in valid_types]
+
+    # Filter by status (default: treat None/"" as to_watch)
+    favorites = [f for f in favorites if f.get("status") in (None, "", "to_watch")]
+
+    # Apply sorting
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler (explicit visible_count approach) ---
