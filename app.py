@@ -1695,7 +1695,7 @@ def render_favorite(fav, idx):
 
 if fav_section == "📌 İzlenecekler":
     # Preserve pagination state; set default only if not present
-    st.session_state.setdefault("to_watch_page", 0)
+    st.session_state.setdefault("to_watch_page", 1)
     page_size = 50
     # Determine which list to show based on media_type
     if media_type == "Movie":
@@ -1727,14 +1727,15 @@ if fav_section == "📌 İzlenecekler":
         return 0
     favorites = sorted(favorites, key=_key_for, reverse=True)
 
-    # Pagination
-    end_idx = (st.session_state["to_watch_page"] + 1) * page_size
+    # Pagination: always include all previous pages, page starts from 1
+    end_idx = st.session_state["to_watch_page"] * page_size
     favorites_to_render = favorites[:end_idx]
     for idx, fav in enumerate(favorites_to_render, start=1):
         render_favorite(fav, idx)
     if end_idx < len(favorites):
         if st.button("⬇️ Daha fazla yükle"):
             st.session_state["to_watch_page"] += 1
+            st.rerun()
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
