@@ -1007,17 +1007,10 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label):
-    # Use session_state for favorites (no Firestore stream)
-    if fav_type == "movie":
-        all_favs = st.session_state.get("favorite_movies", [])
-    else:
-        all_favs = st.session_state.get("favorite_series", [])
-    # Only show items with status == "to_watch"
-    favorites = sorted(
-        [fav for fav in all_favs if (fav or {}).get("status") in (None, "", "to_watch")],
-        key=get_sort_key,
-        reverse=True
-    )
+    # Fetch from Firestore: only items with status == "to_watch"
+    to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
+    favorites = [doc.to_dict() for doc in to_watch_docs]
+    favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(favorites):
@@ -1075,6 +1068,12 @@ def show_favorites(fav_type, label):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
+                        # Force local favorites list to recalc so UI matches İzlenenler behavior
+                        favorites = sorted(
+                            [fav for fav in all_favs if (fav or {}).get("status") in (None, "", "to_watch")],
+                            key=get_sort_key,
+                            reverse=True
+                        )
                         st.success("🗑️ Yorum silindi!")
                         st.rerun()
                 # Inline edit UI if in edit mode
@@ -1115,6 +1114,12 @@ def show_favorites(fav_type, label):
                                 if item.get("id") == fav["id"]:
                                     item["comments"] = comments_sorted
                                     break
+                            # Force local favorites list to recalc so UI matches İzlenenler behavior
+                            favorites = sorted(
+                                [fav for fav in all_favs if (fav or {}).get("status") in (None, "", "to_watch")],
+                                key=get_sort_key,
+                                reverse=True
+                            )
                             st.success("✏️ Yorum güncellendi!")
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
@@ -1163,6 +1168,12 @@ def show_favorites(fav_type, label):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
+                        # Force local favorites list to recalc so UI matches İzlenenler behavior
+                        favorites = sorted(
+                            [fav for fav in all_favs if (fav or {}).get("status") in (None, "", "to_watch")],
+                            key=get_sort_key,
+                            reverse=True
+                        )
                         _safe_set_state(comment_key, "")
                         _safe_set_state(comment_wb_key, "ss")
                         st.success("💬 Yorum kaydedildi!")
