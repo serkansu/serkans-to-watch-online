@@ -1502,8 +1502,8 @@ elif fav_section == "🎬 İzlenenler":
                     if st.button("🗑️", key=f"watched_comment_del_{fav['id']}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-                        # also update local copies so UI reflects immediately
                         fav["comments"] = new_comments
+                        # update session_state immediately after Firestore update (mirror İzlenecekler)
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
@@ -1543,8 +1543,8 @@ elif fav_section == "🎬 İzlenenler":
                                 "date": now_str
                             }
                             db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
-                            # sync session_state and local fav with latest comments
                             fav["comments"] = comments_sorted
+                            # update session_state immediately after Firestore update (mirror İzlenecekler)
                             for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                                 if item.get("id") == fav["id"]:
                                     item["comments"] = comments_sorted
@@ -1594,6 +1594,11 @@ elif fav_section == "🎬 İzlenenler":
                             "comments": new_comments
                         })
                         fav["comments"] = new_comments
+                        # update session_state immediately after Firestore update (mirror İzlenecekler)
+                        for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
                         _safe_set_state(comment_key, "")
                         st.success("💬 Yorum kaydedildi!")
                         st.rerun()
