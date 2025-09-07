@@ -1009,7 +1009,7 @@ sort_option = st.selectbox(
 def show_favorites(fav_type, label):
     # Fetch from Firestore: only items with status == "to_watch"
     to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
-    favorites = [doc.to_dict() for doc in to_watch_docs]
+    favorites = [doc.to_dict() for doc in to_watch_docs if (doc.to_dict().get("type") == fav_type)]
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler ---
@@ -1367,10 +1367,26 @@ def show_favorites(fav_type, label):
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if fav_section == "📌 İzlenecekler":
+    # Pagination logic for İzlenecekler
+    if "to_watch_page" not in st.session_state:
+        st.session_state["to_watch_page"] = 0
+    page_size = 50
+    start_idx = st.session_state["to_watch_page"] * page_size
+    end_idx = start_idx + page_size
+    # Determine which list to show based on media_type
     if media_type == "Movie":
-        show_favorites("movie", "Filmler")
+        favorites = st.session_state.get("favorite_movies", [])
     elif media_type == "TV Show":
-        show_favorites("show", "Diziler")
+        favorites = st.session_state.get("favorite_series", [])
+    else:
+        favorites = []
+    favorites_to_render = favorites[start_idx:end_idx]
+    for idx, fav in enumerate(favorites_to_render, start=start_idx+1):
+        render_favorite(fav, idx)
+    if end_idx < len(favorites):
+        if st.button("⬇️ Daha fazla yükle"):
+            st.session_state["to_watch_page"] += 1
+            st.rerun()
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
@@ -1424,7 +1440,7 @@ elif fav_section == "🎬 İzlenenler":
     # Add (None, None) at the end if exists
     if (None, None) in groups:
         group_keys_sorted.append((None, None))
-    # For the most recent 2 months, show directly; others collapsed
+    # For each group, show directly for most recent 2, use expander for others
     for group_idx, group_key in enumerate(group_keys_sorted):
         items = groups[group_key]
         # Format header
@@ -1435,10 +1451,11 @@ elif fav_section == "🎬 İzlenenler":
             group_label = f"{month_label} {year_label}"
         else:
             group_label = "Diğer"
-        # Show header
+        # Show header and items
         if group_idx < 2:
             st.markdown(f"#### {group_label}")
             for idx, fav in enumerate(items, start=1):
+                # Use existing rendering code for each item (copy from above)
                 imdb_display = f"{float(fav.get('imdbRating', 0) or 0):.1f}" if fav.get('imdbRating') else "N/A"
                 rt_val = fav.get("rt", 0)
                 try:
