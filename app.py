@@ -1010,6 +1010,8 @@ def show_favorites(fav_type, label):
     # Fetch from Firestore: only items with status == "to_watch"
     to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
     favorites = [doc.to_dict() for doc in to_watch_docs]
+    # Filter by type (so movies vs shows are separated properly)
+    favorites = [f for f in favorites if (f.get("type") or "").lower() == fav_type]
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler (explicit visible_count approach) ---
@@ -1331,6 +1333,12 @@ def show_favorites(fav_type, label):
                             st.rerun()
                     with cols_edit[1]:
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
+
+    # --- Daha fazla yükle butonu ---
+    if visible_count < len(favorites):
+        if st.button("⬇️ Daha fazla yükle", key=f"load_more_{fav_type}"):
+            st.session_state["to_watch_visible_count"] = visible_count + 50
+            st.rerun()
 
 if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
