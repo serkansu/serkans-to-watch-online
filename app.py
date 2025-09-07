@@ -405,7 +405,11 @@ def load_favorites():
         if t in ["tv", "tvshow", "show", "series"]:
             item["type"] = "show"
         else:
-            item["type"] = "movie"
+            # Correction: shows collection should always be "show"
+            item["type"] = "show"
+    # Ensure both lists are in session_state correctly
+    st.session_state["favorite_movies"] = movies
+    st.session_state["favorite_series"] = shows
     return movies, shows
 def fix_invalid_imdb_ids(data):
     for section in ["movies", "shows"]:
@@ -1684,12 +1688,9 @@ def render_favorite(fav, idx):
                     st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if fav_section == "📌 İzlenecekler":
-    # Pagination logic for İzlenecekler
-    if "to_watch_page" not in st.session_state:
-        st.session_state["to_watch_page"] = 0
+    # Always reset pagination when switching into this section
+    st.session_state["to_watch_page"] = 0
     page_size = 50
-    start_idx = st.session_state["to_watch_page"] * page_size
-    end_idx = start_idx + page_size
     # Determine which list to show based on media_type
     if media_type == "Movie":
         favorites = st.session_state.get("favorite_movies", [])
@@ -1697,13 +1698,13 @@ if fav_section == "📌 İzlenecekler":
         favorites = st.session_state.get("favorite_series", [])
     else:
         favorites = []
-    favorites_to_render = favorites[start_idx:end_idx]
-    for idx, fav in enumerate(favorites_to_render, start=start_idx+1):
+    end_idx = (st.session_state["to_watch_page"] + 1) * page_size
+    favorites_to_render = favorites[:end_idx]
+    for idx, fav in enumerate(favorites_to_render, start=1):
         render_favorite(fav, idx)
     if end_idx < len(favorites):
         if st.button("⬇️ Daha fazla yükle"):
             st.session_state["to_watch_page"] += 1
-            st.rerun()
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
@@ -1757,10 +1758,21 @@ elif fav_section == "🎬 İzlenenler":
     # Add (None, None) at the end if exists
     if (None, None) in groups:
         group_keys_sorted.append((None, None))
-    # For each group, show directly for most recent 2, use expander for others
+    # Get current and previous (year, month)
+    from datetime import datetime
+    today = datetime.today()
+    current_year, current_month = today.year, today.month
+    # Previous month calculation
+    if current_month == 1:
+        prev_month = 12
+        prev_year = current_year - 1
+    else:
+        prev_month = current_month - 1
+        prev_year = current_year
+    open_months = {(current_year, current_month), (prev_year, prev_month)}
+
     for group_idx, group_key in enumerate(group_keys_sorted):
         items = groups[group_key]
-        # Format header
         year, month = group_key
         if year is not None and month is not None:
             month_label = TURKISH_MONTHS.get(month, f"{month:02d}")
@@ -1768,8 +1780,9 @@ elif fav_section == "🎬 İzlenenler":
             group_label = f"{month_label} {year_label}"
         else:
             group_label = "Diğer"
-        # Show header and items
-        if group_idx < 2:
+
+        is_open = (year, month) in open_months
+        if is_open:
             st.markdown(f"#### {group_label}")
             for idx, fav in enumerate(items, start=1):
                 # Use existing rendering code for each item (copy from above)
