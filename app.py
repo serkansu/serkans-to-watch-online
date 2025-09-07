@@ -648,7 +648,13 @@ st.markdown(
 )
 # --- /Mobile Home Screen & Favicons ---
 
+
+from datetime import datetime as _dt
 st.markdown("<h1>🍿 Serkan'ın İzlenecek Film & Dizi Listesi <span style='color: orange'>ONLINE ✅</span></h1>", unsafe_allow_html=True)
+st.markdown(
+    f"<div style='color: gray; font-size: 12px;'>Deployed: {_dt.now().strftime('%d/%m/%Y %H:%M:%S')}</div>",
+    unsafe_allow_html=True
+)
 
 # --- Quick Toolbar (always visible) ---
 # Ensure required defaults
