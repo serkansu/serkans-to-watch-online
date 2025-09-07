@@ -664,7 +664,11 @@ def show_favorites_count():
     series_docs = db.collection("favorites").where("type", "==", "show").stream()
     movie_count = len(list(movie_docs))
     series_count = len(list(series_docs))
-    st.info(f"🎬 Favorite Movies: {movie_count} | 📺 Favorite TV Shows: {series_count}")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("🎬 Favorite Movies", movie_count)
+    with col2:
+        st.metric("📺 Favorite TV Shows", series_count)
 
 # --- Quick Toolbar (always visible) ---
 # Ensure required defaults
@@ -1369,10 +1373,45 @@ def show_favorites(fav_type, label):
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if fav_section == "📌 İzlenecekler":
+    # Improved favorite counts display (before showing lists)
+    def show_favorites_count():
+        movies = st.session_state.get("favorite_movies", [])
+        series = st.session_state.get("favorite_series", [])
+        movie_count = len([m for m in movies if (m.get("type") == "movie" or m.get("type") is None) and m.get("status") == "to_watch"])
+        # For series: count items with status "to_watch" or status is None
+        series_count = len([s for s in series if (s.get("type") == "show") and (s.get("status") == "to_watch" or s.get("status") is None)])
+        total = movie_count + series_count
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            st.metric("Filmler", movie_count)
+        with col2:
+            st.metric("Diziler", series_count)
+        with col3:
+            st.metric("Toplam", total)
+        # Alternatively, for a single centered bold line:
+        # st.markdown(f"<div style='text-align:center;font-weight:bold;font-size:20px;'>Filmler: {movie_count} &nbsp;|&nbsp; Diziler: {series_count} &nbsp;|&nbsp; Toplam: {total}</div>", unsafe_allow_html=True)
+    show_favorites_count()
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        show_favorites("show", "Diziler")
+        # For TV Show, include items with status "to_watch" or status is None
+        # We'll monkey-patch show_favorites to accept a filter, or filter here
+        all_series = st.session_state.get("favorite_series", [])
+        filtered = [s for s in all_series if (s.get("type") == "show") and (s.get("status") == "to_watch" or s.get("status") is None)]
+        def show_favorites_series_override():
+            # Call the original show_favorites logic, but with filtered as 'favorites'
+            # We'll have to inline the code if show_favorites does not accept favorites param
+            # But for now, let's try to monkey-patch if possible
+            show_favorites("show", "Diziler", favorites=filtered) if "favorites" in show_favorites.__code__.co_varnames else show_favorites("show", "Diziler")
+        # If show_favorites supports 'favorites' arg, use it, else fallback to original
+        try:
+            show_favorites("show", "Diziler", favorites=filtered)
+        except TypeError:
+            # fallback: patch st.session_state["favorite_series"] temporarily
+            orig = st.session_state["favorite_series"]
+            st.session_state["favorite_series"] = filtered
+            show_favorites("show", "Diziler")
+            st.session_state["favorite_series"] = orig
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
