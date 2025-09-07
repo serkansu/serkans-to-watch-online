@@ -650,9 +650,11 @@ st.markdown(
 
 
 from datetime import datetime as _dt
+import pytz
 st.markdown("<h1>🍿 Serkan'ın İzlenecek Film & Dizi Listesi <span style='color: orange'>ONLINE ✅</span></h1>", unsafe_allow_html=True)
-st.markdown(
-    f"<div style='color: gray; font-size: 12px;'>Deployed: {_dt.now().strftime('%d/%m/%Y %H:%M:%S')}</div>",
+deploy_placeholder = st.empty()
+deploy_placeholder.markdown(
+    f"<div style='color: gray; font-size: 12px;'>Deployed: {_dt.now(pytz.timezone('Europe/Istanbul')).strftime('%d/%m/%Y %H:%M:%S')}</div>",
     unsafe_allow_html=True
 )
 
@@ -1070,7 +1072,8 @@ def show_favorites(fav_type, label):
                     if st.button("🗑️", key=f"fav_comment_del_{fav['id']}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-                        # Update session_state as well
+                        # Update fav["comments"] and session_state too
+                        fav["comments"] = new_comments
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
@@ -1110,7 +1113,8 @@ def show_favorites(fav_type, label):
                                 "date": now_str
                             }
                             db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
-                            # Update session_state as well
+                            # Update fav["comments"] and session_state too
+                            fav["comments"] = comments_sorted
                             for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                                 if item.get("id") == fav["id"]:
                                     item["comments"] = comments_sorted
@@ -1159,7 +1163,7 @@ def show_favorites(fav_type, label):
                         db.collection("favorites").document(fav["id"]).update({
                             "comments": new_comments
                         })
-                        # Update session_state as well
+                        fav["comments"] = new_comments
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
