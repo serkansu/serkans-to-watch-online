@@ -1365,6 +1365,7 @@ def show_favorites(fav_type, label):
                                 break
                         st.session_state["fav_section"] = "🎬 İzlenenler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
+                        st.session_state["fav_section"] = "🎬 İzlenenler"
                         st.rerun()
                 # --- Action buttons: edit, pin, etc. ---
                 if st.button("✏️", key=f"edit_{fav['id']}"):
