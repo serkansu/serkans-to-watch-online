@@ -1,27 +1,3 @@
-def _update_comments(fav, new_comments):
-    # 1. Firestore update
-    db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-    # 2. fav["comments"]
-    fav["comments"] = new_comments
-    # 3. session_state güncellemesi
-    fav_type_val = fav.get("type", "").lower()
-    if fav_type_val in ["movie", "film"]:
-        target_list = st.session_state["favorite_movies"]
-    else:
-        target_list = st.session_state["favorite_series"]
-    for item in target_list:
-        if item.get("id") == fav["id"]:
-            item["comments"] = new_comments
-            break
-    # 4. Reset comment input states if exist
-    comment_key = f"to_watch_comment_add_{fav['id']}"
-    comment_wb_key = f"to_watch_comment_add_wb_{fav['id']}"
-    _safe_set_state(comment_key, "")
-    _safe_set_state(comment_wb_key, "ss")
-    # 5. Success
-    st.success("💬 Yorum kaydedildi!" if new_comments else "🗑️ Yorum silindi!")
-    # 6. Rerun
-    st.rerun()
 from tmdb import search_movie, search_tv, search_by_actor
 from omdb import get_ratings
 import csv
