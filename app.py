@@ -1012,10 +1012,14 @@ sort_option = st.selectbox(
 )
 
 
-def show_favorites(fav_type, label):
-    # Fetch from Firestore: only items with status == "to_watch"
-    to_watch_docs = db.collection("favorites").where("status", "==", "to_watch").stream()
-    favorites = [doc.to_dict() for doc in to_watch_docs]
+def show_favorites(fav_type, label, favorites=None):
+    # Fetch from Firestore only if favorites not provided; filter by to_watch/None/""
+    if favorites is None:
+        to_watch_docs = db.collection("favorites").where("type", "==", fav_type).stream()
+        favorites = [
+            doc.to_dict() for doc in to_watch_docs
+            if doc.to_dict().get("status") in ("to_watch", None, "")
+        ]
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler ---
@@ -1394,24 +1398,9 @@ if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        # For TV Show, include items with status "to_watch" or status is None
-        # We'll monkey-patch show_favorites to accept a filter, or filter here
         all_series = st.session_state.get("favorite_series", [])
-        filtered = [s for s in all_series if (s.get("type") == "show") and (s.get("status") == "to_watch" or s.get("status") is None)]
-        def show_favorites_series_override():
-            # Call the original show_favorites logic, but with filtered as 'favorites'
-            # We'll have to inline the code if show_favorites does not accept favorites param
-            # But for now, let's try to monkey-patch if possible
-            show_favorites("show", "Diziler", favorites=filtered) if "favorites" in show_favorites.__code__.co_varnames else show_favorites("show", "Diziler")
-        # If show_favorites supports 'favorites' arg, use it, else fallback to original
-        try:
-            show_favorites("show", "Diziler", favorites=filtered)
-        except TypeError:
-            # fallback: patch st.session_state["favorite_series"] temporarily
-            orig = st.session_state["favorite_series"]
-            st.session_state["favorite_series"] = filtered
-            show_favorites("show", "Diziler")
-            st.session_state["favorite_series"] = orig
+        filtered = [s for s in all_series if (s.get("type") == "show") and (s.get("status") in ("to_watch", None, ""))]
+        show_favorites("show", "Diziler", favorites=filtered)
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
