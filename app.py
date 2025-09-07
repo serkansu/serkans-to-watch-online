@@ -1108,8 +1108,6 @@ def show_favorites(fav_type, label):
                 comment_wb_key = f"fav_comment_add_wb_{fav['id']}"
                 if comment_key not in st.session_state:
                     _safe_set_state(comment_key, "")
-                if comment_wb_key not in st.session_state:
-                    _safe_set_state(comment_wb_key, "ss")
                 comment_text = st.text_area(
                     "Yorum ekle",
                     key=comment_key,
@@ -1119,7 +1117,8 @@ def show_favorites(fav_type, label):
                 comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
                     ["öz", "ss", "öz❤️ss"],
-                    index=1,
+                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(comment_wb_key, "ss"))
+                           if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
@@ -1467,8 +1466,6 @@ elif fav_section == "🎬 İzlenenler":
                 comment_wb_key = f"watched_comment_add_wb_{fav['id']}"
                 if comment_key not in st.session_state:
                     _safe_set_state(comment_key, "")
-                if comment_wb_key not in st.session_state:
-                    _safe_set_state(comment_wb_key, "ss")
                 comment_text = st.text_area(
                     "Yorum ekle",
                     key=comment_key,
@@ -1478,7 +1475,8 @@ elif fav_section == "🎬 İzlenenler":
                 comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
                     ["öz", "ss", "öz❤️ss"],
-                    index=1,
+                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(comment_wb_key, "ss"))
+                           if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
@@ -1779,6 +1777,8 @@ elif fav_section == "🖤 Blacklist":
                 bl_comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
                     ["öz", "ss", "öz❤️ss"],
+                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(bl_comment_wb_key, "ss"))
+                           if st.session_state.get(bl_comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
                     key=bl_comment_wb_key,
                     label_visibility="visible",
                 )
