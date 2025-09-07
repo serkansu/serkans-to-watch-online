@@ -999,10 +999,14 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label):
-    docs = db.collection("favorites").where("type", "==", fav_type).stream()
+    # Use session_state for favorites (no Firestore stream)
+    if fav_type == "movie":
+        all_favs = st.session_state.get("favorite_movies", [])
+    else:
+        all_favs = st.session_state.get("favorite_series", [])
     # Only show items with status == "to_watch"
     favorites = sorted(
-        [doc.to_dict() for doc in docs if (doc.to_dict() or {}).get("status") in (None, "", "to_watch")],
+        [fav for fav in all_favs if (fav or {}).get("status") in (None, "", "to_watch")],
         key=get_sort_key,
         reverse=True
     )
@@ -1060,6 +1064,11 @@ def show_favorites(fav_type, label):
                     if st.button("🗑️", key=f"fav_comment_del_{fav['id']}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        # Update session_state as well
+                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
                         st.success("🗑️ Yorum silindi!")
                         st.rerun()
                 # Inline edit UI if in edit mode
@@ -1095,6 +1104,11 @@ def show_favorites(fav_type, label):
                                 "date": now_str
                             }
                             db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                            # Update session_state as well
+                            for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                if item.get("id") == fav["id"]:
+                                    item["comments"] = comments_sorted
+                                    break
                             st.success("✏️ Yorum güncellendi!")
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
@@ -1139,7 +1153,11 @@ def show_favorites(fav_type, label):
                         db.collection("favorites").document(fav["id"]).update({
                             "comments": new_comments
                         })
-                        fav["comments"] = new_comments
+                        # Update session_state as well
+                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item["comments"] = new_comments
+                                break
                         _safe_set_state(comment_key, "")
                         st.success("💬 Yorum kaydedildi!")
                         st.rerun()
@@ -1242,6 +1260,20 @@ def show_favorites(fav_type, label):
                                     "blacklistedBy": None,
                                     "blacklistedAt": None,
                                 })
+                                # Update session_state
+                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                    if item.get("id") == fav["id"]:
+                                        item.update({
+                                            "status": "watched",
+                                            "watchedBy": status_select,
+                                            "watchedAt": now_str,
+                                            "cineselectRating": cs_int,
+                                            "watchedEmoji": emoji,
+                                            "comments": updated_comments,
+                                            "blacklistedBy": None,
+                                            "blacklistedAt": None,
+                                        })
+                                        break
                                 st.session_state["fav_section"] = "🎬 İzlenenler"
                                 st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select}) | CS: {cs_int} {emoji}")
                                 st.rerun()
@@ -1256,6 +1288,20 @@ def show_favorites(fav_type, label):
                                     "watchedBy": None,
                                     "watchedAt": None,
                                 })
+                                # Update session_state
+                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                    if item.get("id") == fav["id"]:
+                                        item.update({
+                                            "status": "blacklist",
+                                            "blacklistedBy": "🖤 BL",
+                                            "blacklistedAt": now_str,
+                                            "cineselectRating": cs_int,
+                                            "watchedEmoji": emoji,
+                                            "comments": updated_comments,
+                                            "watchedBy": None,
+                                            "watchedAt": None,
+                                        })
+                                        break
                                 st.session_state["fav_section"] = "🖤 Blacklist"
                                 st.success(f"✅ {fav['title']} blacklist'e taşındı! (CS: {cs_int} {emoji})")
                                 st.rerun()
@@ -1272,6 +1318,18 @@ def show_favorites(fav_type, label):
                             "blacklistedBy": None,
                             "blacklistedAt": None,
                         })
+                        # Update session_state
+                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item.update({
+                                    "status": "to_watch",
+                                    "watchedBy": None,
+                                    "watchedAt": None,
+                                    "watchedEmoji": None,
+                                    "blacklistedBy": None,
+                                    "blacklistedAt": None,
+                                })
+                                break
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                         st.rerun()
@@ -1286,6 +1344,19 @@ def show_favorites(fav_type, label):
                             "blacklistedBy": None,
                             "blacklistedAt": None,
                         })
+                        # Update session_state
+                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id") == fav["id"]:
+                                item.update({
+                                    "status": "watched",
+                                    "watchedBy": None,
+                                    "watchedAt": now_str,
+                                    "cineselectRating": 60,
+                                    "watchedEmoji": "😐",
+                                    "blacklistedBy": None,
+                                    "blacklistedAt": None,
+                                })
+                                break
                         st.session_state["fav_section"] = "🎬 İzlenenler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: watched (n/w)")
                         st.rerun()
@@ -1311,8 +1382,11 @@ def show_favorites(fav_type, label):
                     pin_val = min(100, base + 1)
                     # Update Firestore document immediately
                     db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
-                    # Update local favorite's CineSelect rating for instant UI
-                    fav["cineselectRating"] = pin_val
+                    # Update session_state as well
+                    for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                        if item.get("id") == fav["id"]:
+                            item["cineselectRating"] = pin_val
+                            break
                     _safe_set_state(f"input_{fav['id']}", pin_val)
                     st.success(f"📌 CineSelect puanı {pin_val} olarak güncellendi ve başa taşındı!")
                     st.rerun()
@@ -1332,6 +1406,11 @@ def show_favorites(fav_type, label):
                         if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
                             new_val = _clamp_cs(st.session_state.get(i_key, current))
                             db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
+                            # Update session_state as well
+                            for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                if item.get("id") == fav["id"]:
+                                    item["cineselectRating"] = new_val
+                                    break
                             st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
                             _safe_set_state(f"edit_mode_{fav['id']}", False)
                             st.rerun()
