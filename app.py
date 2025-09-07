@@ -1398,9 +1398,7 @@ if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        all_series = st.session_state.get("favorite_series", [])
-        filtered = [s for s in all_series if (s.get("type") == "show") and (s.get("status") in ("to_watch", None, ""))]
-        show_favorites("show", "Diziler", favorites=filtered)
+        show_favorites("show", "Diziler")
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
