@@ -1024,33 +1024,11 @@ def show_favorites(fav_type, label):
     # Render only sliced favorites
     favorites = display_favorites
 
-    # Inject JS to detect scroll bottom and auto-increase page
-    scroll_js = f"""
-    <script>
-    var bottomSent = false;
-    window.onscroll = function() {{
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 10) {{
-            if (!bottomSent) {{
-                fetch('/_stcore/streamlit/command', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{'command': 'increment_page', 'key': '{page_key}'}})
-                }});
-                bottomSent = true;
-            }}
-        }} else {{
-            bottomSent = false;
-        }}
-    }};
-    </script>
-    """
-    st.markdown(scroll_js, unsafe_allow_html=True)
-
-    # Handle page increment command
-    if "_command" in st.session_state and st.session_state["_command"].get("command") == "increment_page" and st.session_state["_command"].get("key") == page_key:
-        st.session_state[page_key] += 1
-        del st.session_state["_command"]
-        st.rerun()
+    # "Daha fazla yükle" butonu
+    if len(favorites) > page_size * st.session_state[page_key]:
+        if st.button("📥 Daha fazla yükle", key=f"load_more_{fav_type}_{st.session_state[page_key]}"):
+            st.session_state[page_key] += 1
+            st.rerun()
 
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(favorites):
