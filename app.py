@@ -4,7 +4,12 @@ def _update_comments(fav, new_comments):
     # 2. fav["comments"]
     fav["comments"] = new_comments
     # 3. session_state güncellemesi
-    for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
+    fav_type_val = fav.get("type", "").lower()
+    if fav_type_val in ["movie", "film"]:
+        target_list = st.session_state["favorite_movies"]
+    else:
+        target_list = st.session_state["favorite_series"]
+    for item in target_list:
         if item.get("id") == fav["id"]:
             item["comments"] = new_comments
             break
@@ -1110,8 +1115,12 @@ def show_favorites(fav_type, label):
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
                         # 3. Update session_state
-                        fav_type_val = fav.get("type", "movie")
-                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                        fav_type_val = fav.get("type", "").lower()
+                        if fav_type_val in ["movie", "film"]:
+                            target_list = st.session_state["favorite_movies"]
+                        else:
+                            target_list = st.session_state["favorite_series"]
+                        for item in target_list:
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
@@ -1156,8 +1165,12 @@ def show_favorites(fav_type, label):
                             # 2. Update fav["comments"]
                             fav["comments"] = comments_sorted
                             # 3. Update session_state
-                            fav_type_val = fav.get("type", "movie")
-                            for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                            fav_type_val = fav.get("type", "").lower()
+                            if fav_type_val in ["movie", "film"]:
+                                target_list = st.session_state["favorite_movies"]
+                            else:
+                                target_list = st.session_state["favorite_series"]
+                            for item in target_list:
                                 if item.get("id") == fav["id"]:
                                     item["comments"] = comments_sorted
                                     break
@@ -1210,8 +1223,12 @@ def show_favorites(fav_type, label):
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
                         # 3. Update session_state
-                        fav_type_val = fav.get("type", "movie")
-                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                        fav_type_val = fav.get("type", "").lower()
+                        if fav_type_val in ["movie", "film"]:
+                            target_list = st.session_state["favorite_movies"]
+                        else:
+                            target_list = st.session_state["favorite_series"]
+                        for item in target_list:
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
@@ -1437,8 +1454,12 @@ def render_favorite(fav, idx):
                     # 2. Update fav["comments"]
                     fav["comments"] = new_comments
                     # 3. Update session_state
-                    fav_type_val = fav.get("type", "movie")
-                    for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                    fav_type_val = fav.get("type", "").lower()
+                    if fav_type_val in ["movie", "film"]:
+                        target_list = st.session_state["favorite_movies"]
+                    else:
+                        target_list = st.session_state["favorite_series"]
+                    for item in target_list:
                         if item.get("id") == fav["id"]:
                             item["comments"] = new_comments
                             break
@@ -1483,8 +1504,12 @@ def render_favorite(fav, idx):
                         # 2. Update fav["comments"]
                         fav["comments"] = comments_sorted
                         # 3. Update session_state
-                        fav_type_val = fav.get("type", "movie")
-                        for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                        fav_type_val = fav.get("type", "").lower()
+                        if fav_type_val in ["movie", "film"]:
+                            target_list = st.session_state["favorite_movies"]
+                        else:
+                            target_list = st.session_state["favorite_series"]
+                        for item in target_list:
                             if item.get("id") == fav["id"]:
                                 item["comments"] = comments_sorted
                                 break
@@ -1537,8 +1562,12 @@ def render_favorite(fav, idx):
                     # 2. Update fav["comments"]
                     fav["comments"] = new_comments
                     # 3. Update session_state
-                    fav_type_val = fav.get("type", "movie")
-                    for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
+                    fav_type_val = fav.get("type", "").lower()
+                    if fav_type_val in ["movie", "film"]:
+                        target_list = st.session_state["favorite_movies"]
+                    else:
+                        target_list = st.session_state["favorite_series"]
+                    for item in target_list:
                         if item.get("id") == fav["id"]:
                             item["comments"] = new_comments
                             break
