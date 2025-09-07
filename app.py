@@ -1012,26 +1012,14 @@ def show_favorites(fav_type, label):
     favorites = [doc.to_dict() for doc in to_watch_docs]
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
-    # --- Incremental scroll for Izlenecekler ---
-    page_size = 50
-    page_key = f"to_watch_page_{fav_type}"
-    if page_key not in st.session_state:
-        st.session_state[page_key] = 1
-
-    # Slice favorites according to current page
-    display_favorites = favorites[:page_size * st.session_state[page_key]]
-
-    # Render only sliced favorites
-    favorites = display_favorites
-
-    # "Daha fazla yükle" butonu
-    if len(favorites) > page_size * st.session_state[page_key]:
-        if st.button("📥 Daha fazla yükle", key=f"load_more_{fav_type}_{st.session_state[page_key]}"):
-            st.session_state[page_key] += 1
-            st.rerun()
+    # --- Incremental scroll for Izlenecekler (explicit visible_count approach) ---
+    if "to_watch_visible_count" not in st.session_state:
+        st.session_state["to_watch_visible_count"] = 50
+    visible_count = st.session_state["to_watch_visible_count"]
+    favorites_to_show = favorites[:visible_count]
 
     st.markdown(f"### 📁 {label}")
-    for idx, fav in enumerate(favorites):
+    for idx, fav in enumerate(favorites_to_show):
         imdb_display = (
             f"{float(fav.get('imdbRating', 0) or 0):.1f}"
             if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
@@ -1348,7 +1336,7 @@ if fav_section == "📌 İzlenecekler":
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        show_favorites("show", "Diziler")
+        show_favorites("series", "Diziler")
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
@@ -2331,3 +2319,9 @@ elif fav_section == "🖤 Blacklist":
                     st.session_state["fav_section"] = "🖤 Blacklist"
                     st.success(f"❌ {fav['title']} tamamen silindi!")
                     st.rerun()
+
+    # "Daha fazla yükle" button for incremental scroll (Blacklist)
+    if st.session_state.get("blacklist_visible_count", 50) < len(blacklisted_items):
+        if st.button("📥 Daha fazla yükle", key=f"load_more_blacklist_{st.session_state['blacklist_visible_count']}"):
+            st.session_state["blacklist_visible_count"] += 50
+            st.rerun()
