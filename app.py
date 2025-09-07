@@ -1156,12 +1156,10 @@ def show_favorites(fav_type, label):
                             "date": now_str,
                         }
                         new_comments.append(new_comment)
-                        db.collection("favorites").document(fav["id"]).update({
-                            "comments": new_comments
-                        })
-                        fav["comments"] = new_comments
-                        # update session_state immediately after Firestore update (mirror İzlenenler)
-                        for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
+                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        fav["comments"] = new_comments   # 👈 BU SATIRI EKLE
+                        for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
+                                     else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = new_comments
                                 break
