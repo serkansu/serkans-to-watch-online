@@ -1411,9 +1411,15 @@ def render_favorite(fav, idx):
                     st.rerun()
             with comment_row_cols[2]:
                 if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
+                    # 1. Update Firestore
                     new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                     _update_comments(fav, new_comments)
+                    # 2. (already done in _update_comments)
+                    # 3. (already done in _update_comments)
+                    # 4. No input state to reset for delete
+                    # 5. Show success
                     st.success("🗑️ Yorum silindi!")
+                    # 6. Rerun
                     st.rerun()
             # Inline edit UI if in edit mode
             if st.session_state.get(edit_mode_key, False):
@@ -1441,14 +1447,20 @@ def render_favorite(fav, idx):
                 with save_col:
                     if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
                         now_str = format_turkish_datetime(_dt.now())
+                        # 1. Update Firestore and local/session state via _update_comments
                         comments_sorted[c_idx] = {
                             "text": new_text.strip(),
                             "watchedBy": new_who,
                             "date": now_str
                         }
                         _update_comments(fav, comments_sorted)
-                        st.success("✏️ Yorum güncellendi!")
+                        # 2. (already done in _update_comments)
+                        # 3. (already done in _update_comments)
+                        # 4. Reset edit mode state
                         _safe_set_state(edit_mode_key, False)
+                        # 5. Show success
+                        st.success("✏️ Yorum güncellendi!")
+                        # 6. Rerun
                         st.rerun()
                 with cancel_col:
                     if st.button("❌ İptal", key=f"to_watch_comment_cancel_{fav['id']}_{c_idx}"):
@@ -1482,6 +1494,7 @@ def render_favorite(fav, idx):
                 comment_full = comment_text.strip()
                 who_val = st.session_state.get(comment_wb_key, "")
                 if comment_full and who_val:
+                    # 1. Update Firestore first
                     new_comment = {
                         "text": comment_full,
                         "watchedBy": who_val,
@@ -1489,9 +1502,14 @@ def render_favorite(fav, idx):
                     }
                     new_comments.append(new_comment)
                     _update_comments(fav, new_comments)
+                    # 2. (already done in _update_comments)
+                    # 3. (already done in _update_comments)
+                    # 4. Reset input states
                     _safe_set_state(comment_key, "")
                     _safe_set_state(comment_wb_key, "ss")
+                    # 5. Show success
                     st.success("💬 Yorum kaydedildi!")
+                    # 6. Rerun
                     st.rerun()
     with cols[2]:
         with st.expander("✨ Options"):
