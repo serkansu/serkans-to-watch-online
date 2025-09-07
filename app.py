@@ -1086,25 +1086,9 @@ def show_favorites(fav_type, label):
                     st.image(poster_url, width=120)
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
-            # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
+            # --- Comments section: İzlenecekler - match İzlenenler 6-step logic for add, edit, delete ---
             comments = fav.get("comments", [])
             from datetime import datetime as _dt
-            def parse_turkish_or_iso_date(date_str):
-                if not date_str or not isinstance(date_str, str):
-                    return None
-                formats = [
-                    "%d/%m/%y",          # 07/09/25
-                    "%d/%m/%Y",          # 07/09/2025
-                    "%Y-%m-%d",          # 2025-09-07
-                    "%Y-%m-%d %H:%M:%S", # 2025-09-07 14:30:00
-                    "%d.%m.%Y %H:%M",    # 07.09.2025 14:30
-                ]
-                for fmt in formats:
-                    try:
-                        return datetime.strptime(date_str, fmt)
-                    except ValueError:
-                        continue
-                return None
             comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
             for c_idx, c in enumerate(comments_sorted):
                 text = c.get("text", "")
@@ -1125,7 +1109,7 @@ def show_favorites(fav_type, label):
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
-                        # 3. Update session_state copy
+                        # 3. Update session_state
                         fav_type_val = fav.get("type", "movie")
                         for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
@@ -1171,7 +1155,7 @@ def show_favorites(fav_type, label):
                             db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
                             # 2. Update fav["comments"]
                             fav["comments"] = comments_sorted
-                            # 3. Update session_state copy
+                            # 3. Update session_state
                             fav_type_val = fav.get("type", "movie")
                             for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                                 if item.get("id") == fav["id"]:
@@ -1225,7 +1209,7 @@ def show_favorites(fav_type, label):
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
-                        # 3. Update session_state copy
+                        # 3. Update session_state
                         fav_type_val = fav.get("type", "movie")
                         for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
@@ -1429,7 +1413,7 @@ def render_favorite(fav, idx):
                 st.image(poster_url, width=120)
     with cols[1]:
         st.markdown(f"**{idx}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
-        # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
+        # --- Comments section: İzlenecekler - match İzlenenler 6-step logic for add, edit, delete ---
         comments = fav.get("comments", [])
         from datetime import datetime as _dt
         comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
@@ -1447,12 +1431,12 @@ def render_favorite(fav, idx):
                     st.rerun()
             with comment_row_cols[2]:
                 if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
-                    # 1. Firestore update first
+                    # 1. Firestore update
                     new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                     db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                     # 2. Update fav["comments"]
                     fav["comments"] = new_comments
-                    # 3. Update session_state copy
+                    # 3. Update session_state
                     fav_type_val = fav.get("type", "movie")
                     for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                         if item.get("id") == fav["id"]:
@@ -1489,7 +1473,7 @@ def render_favorite(fav, idx):
                 with save_col:
                     if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
                         now_str = format_turkish_datetime(_dt.now())
-                        # 1. Firestore update first
+                        # 1. Firestore update
                         comments_sorted[c_idx] = {
                             "text": new_text.strip(),
                             "watchedBy": new_who,
@@ -1498,7 +1482,7 @@ def render_favorite(fav, idx):
                         db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
                         # 2. Update fav["comments"]
                         fav["comments"] = comments_sorted
-                        # 3. Update session_state copy
+                        # 3. Update session_state
                         fav_type_val = fav.get("type", "movie")
                         for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
@@ -1542,7 +1526,7 @@ def render_favorite(fav, idx):
                 comment_full = comment_text.strip()
                 who_val = st.session_state.get(comment_wb_key, "")
                 if comment_full and who_val:
-                    # 1. Firestore update first
+                    # 1. Firestore update
                     new_comment = {
                         "text": comment_full,
                         "watchedBy": who_val,
@@ -1552,7 +1536,7 @@ def render_favorite(fav, idx):
                     db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                     # 2. Update fav["comments"]
                     fav["comments"] = new_comments
-                    # 3. Update session_state copy
+                    # 3. Update session_state
                     fav_type_val = fav.get("type", "movie")
                     for item in (st.session_state["favorite_movies"] if fav_type_val == "movie" else st.session_state["favorite_series"]):
                         if item.get("id") == fav["id"]:
