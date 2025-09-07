@@ -1049,7 +1049,7 @@ def show_favorites(fav_type, label):
                     st.image(poster_url, width=120)
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
-            # --- Display comments just under the movie title/details, İzlenenler-style ---
+            # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
             comments = fav.get("comments", [])
             from datetime import datetime as _dt
             comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
@@ -1061,12 +1061,12 @@ def show_favorites(fav_type, label):
                 with comment_row_cols[0]:
                     st.write(f"💬 {text} — ({who}) • {date}")
                 with comment_row_cols[1]:
-                    edit_mode_key = f"fav_comment_edit_mode_{fav['id']}_{c_idx}"
-                    if st.button("✏️", key=f"fav_comment_edit_{fav['id']}_{c_idx}"):
+                    edit_mode_key = f"to_watch_comment_edit_mode_{fav['id']}_{c_idx}"
+                    if st.button("✏️", key=f"to_watch_comment_edit_{fav['id']}_{c_idx}"):
                         _safe_set_state(edit_mode_key, True)
                         st.rerun()
                 with comment_row_cols[2]:
-                    if st.button("🗑️", key=f"fav_comment_del_{fav['id']}_{c_idx}"):
+                    if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                         fav["comments"] = new_comments
@@ -1078,8 +1078,8 @@ def show_favorites(fav_type, label):
                         st.rerun()
                 # Inline edit UI if in edit mode
                 if st.session_state.get(edit_mode_key, False):
-                    edit_text_key = f"fav_comment_edit_text_{fav['id']}_{c_idx}"
-                    edit_who_key = f"fav_comment_edit_who_{fav['id']}_{c_idx}"
+                    edit_text_key = f"to_watch_comment_edit_text_{fav['id']}_{c_idx}"
+                    edit_who_key = f"to_watch_comment_edit_who_{fav['id']}_{c_idx}"
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
                     default_who = (who or "ss")
@@ -1100,7 +1100,7 @@ def show_favorites(fav_type, label):
                         )
                     save_col, cancel_col = st.columns([1, 1])
                     with save_col:
-                        if st.button("💾 Kaydet", key=f"fav_comment_save_{fav['id']}_{c_idx}"):
+                        if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
                             now_str = format_turkish_datetime(_dt.now())
                             comments_sorted[c_idx] = {
                                 "text": new_text.strip(),
@@ -1117,13 +1117,13 @@ def show_favorites(fav_type, label):
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
                     with cancel_col:
-                        if st.button("❌ İptal", key=f"fav_comment_cancel_{fav['id']}_{c_idx}"):
+                        if st.button("❌ İptal", key=f"to_watch_comment_cancel_{fav['id']}_{c_idx}"):
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
             # --- Yorum Ekle expander, İzlenenler-style, immediately after comments ---
             with st.expander("💬 Yorum Ekle"):
-                comment_key = f"fav_comment_add_{fav['id']}"
-                comment_wb_key = f"fav_comment_add_wb_{fav['id']}"
+                comment_key = f"to_watch_comment_add_{fav['id']}"
+                comment_wb_key = f"to_watch_comment_add_wb_{fav['id']}"
                 if comment_key not in st.session_state:
                     _safe_set_state(comment_key, "")
                 comment_text = st.text_area(
@@ -1140,7 +1140,7 @@ def show_favorites(fav_type, label):
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
-                comment_btn_key = f"fav_comment_add_btn_{fav['id']}"
+                comment_btn_key = f"to_watch_comment_add_btn_{fav['id']}"
                 comments = fav.get("comments", [])
                 new_comments = list(comments) if comments else []
                 if st.button("💬 Comment yap", key=comment_btn_key):
