@@ -1429,7 +1429,6 @@ def render_favorite(fav, idx):
                     new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                     db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                     fav["comments"] = new_comments
-                    # update session_state immediately after Firestore update (mirror İzlenenler)
                     for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                         if item.get("id") == fav["id"]:
                             item["comments"] = new_comments
@@ -1469,7 +1468,6 @@ def render_favorite(fav, idx):
                         }
                         db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
                         fav["comments"] = comments_sorted
-                        # update session_state immediately after Firestore update (mirror İzlenenler)
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                             if item.get("id") == fav["id"]:
                                 item["comments"] = comments_sorted
@@ -1515,23 +1513,15 @@ def render_favorite(fav, idx):
                         "date": now_str,
                     }
                     new_comments.append(new_comment)
-                    # 1. Firestore update
                     db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
-                    # 2. Update fav["comments"]
                     fav["comments"] = new_comments
-                    # 3. session_state güncellemesi
-                    for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
-                                 else st.session_state["favorite_series"]):
+                    for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                         if item.get("id") == fav["id"]:
                             item["comments"] = new_comments
                             break
-                    # 4. _safe_set_state(comment_key, "")
                     _safe_set_state(comment_key, "")
-                    # 5. _safe_set_state(comment_wb_key, "ss")
                     _safe_set_state(comment_wb_key, "ss")
-                    # 6. st.success
                     st.success("💬 Yorum kaydedildi!")
-                    # 7. st.rerun()
                     st.rerun()
     with cols[2]:
         with st.expander("✨ Options"):
