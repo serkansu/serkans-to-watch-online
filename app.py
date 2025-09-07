@@ -754,19 +754,9 @@ _shows_all  = list(st.session_state.get("favorite_series", []))
 def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
-        # Always return tuple: (CS, IMDb, Year) for CineSelect mode
         if sort_name == "CineSelect":
-            cs = int(fav.get("cineselectRating") or 0)
-            try:
-                imdb = float(fav.get("imdbRating") or 0)
-            except Exception:
-                imdb = 0.0
-            try:
-                year = int(fav.get("year") or 0)
-            except Exception:
-                year = 0
-            # For reverse=True, sort DESC
-            return (cs, imdb, year)
+            # For CineSelect, sort by CS descending as int
+            return int(fav.get("cineselectRating") or 0)
         elif sort_name == "IMDb":
             return float(fav.get("imdbRating") or 0)
         elif sort_name == "RT":
@@ -1088,8 +1078,24 @@ def show_favorites(fav_type, label):
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
             comments = fav.get("comments", [])
-            from datetime import datetime as _dt
-            comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
+from datetime import datetime as _dt
+def parse_turkish_or_iso_date(date_str):
+    if not date_str or not isinstance(date_str, str):
+        return None
+    formats = [
+        "%d/%m/%y",          # 07/09/25
+        "%d/%m/%Y",          # 07/09/2025
+        "%Y-%m-%d",          # 2025-09-07
+        "%Y-%m-%d %H:%M:%S", # 2025-09-07 14:30:00
+        "%d.%m.%Y %H:%M",    # 07.09.2025 14:30
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    return None
+comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
             for c_idx, c in enumerate(comments_sorted):
                 text = c.get("text", "")
                 who = c.get("watchedBy", "")
@@ -1688,8 +1694,8 @@ def render_favorite(fav, idx):
                     st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
 
 if fav_section == "📌 İzlenecekler":
-    # Always reset pagination when switching into this section
-    st.session_state["to_watch_page"] = 0
+    # Preserve pagination state; set default only if not present
+    st.session_state.setdefault("to_watch_page", 0)
     page_size = 50
     # Determine which list to show based on media_type
     if media_type == "Movie":
