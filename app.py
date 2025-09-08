@@ -3,37 +3,61 @@ import pandas as pd
 # --- Sync summary table helper ---
 def _show_sync_summary(label, movies, series):
     """
-    Show a summary DataFrame of exported movies and series.
+    Show a summary listing of exported movies and series.
     """
     st.markdown(f"### 🔍 {label} — Senkronize Edilenler")
-    rows = []
     idx = 1
-    for item in movies or []:
-        rows.append({
-            "No": idx,
-            "Tür": "Film",
-            "Başlık": item.get("title", "—"),
-            "Yıl": item.get("year", "—"),
-            "IMDb": item.get("imdbRating", item.get("imdb", "N/A")) if item.get("imdbRating") not in (None, "", "N/A") else (item.get("imdb", "N/A") if item.get("imdb") else "N/A"),
-            "RT": item.get("rt", "N/A") if item.get("rt") not in (None, "", "N/A") else "N/A",
-            "CS": item.get("cineselectRating", "N/A") if item.get("cineselectRating") not in (None, "", "N/A") else "N/A",
-            "Statü": item.get("status", "to_watch") if item.get("status") not in (None, "") else "to_watch",
-        })
+    for item in (movies or []):
+        # Prepare all keys to be included
+        keys = list(item.keys())
+        # Always show standard fields first if present
+        std_keys = ["title", "year", "imdb", "imdbRating", "rt", "cineselectRating", "status", "comments", "poster"]
+        # Compose ordered keys: std_keys first, then any other keys
+        ordered_keys = []
+        for k in std_keys:
+            if k in item:
+                ordered_keys.append(k)
+        for k in keys:
+            if k not in ordered_keys:
+                ordered_keys.append(k)
+        # Build formatted string
+        summary = [f"**{idx}. Film**"]
+        for k in ordered_keys:
+            v = item.get(k, "—")
+            # Format lists (like comments) as count or short preview
+            if isinstance(v, list):
+                if k == "comments":
+                    v_str = f"{len(v)} yorum"
+                else:
+                    v_str = str(v)
+            else:
+                v_str = str(v)
+            summary.append(f"{k}: {v_str}")
+        st.markdown(" | ".join(summary))
         idx += 1
-    for item in series or []:
-        rows.append({
-            "No": idx,
-            "Tür": "Dizi",
-            "Başlık": item.get("title", "—"),
-            "Yıl": item.get("year", "—"),
-            "IMDb": item.get("imdbRating", item.get("imdb", "N/A")) if item.get("imdbRating") not in (None, "", "N/A") else (item.get("imdb", "N/A") if item.get("imdb") else "N/A"),
-            "RT": item.get("rt", "N/A") if item.get("rt") not in (None, "", "N/A") else "N/A",
-            "CS": item.get("cineselectRating", "N/A") if item.get("cineselectRating") not in (None, "", "N/A") else "N/A",
-            "Statü": item.get("status", "to_watch") if item.get("status") not in (None, "") else "to_watch",
-        })
+    for item in (series or []):
+        keys = list(item.keys())
+        std_keys = ["title", "year", "imdb", "imdbRating", "rt", "cineselectRating", "status", "comments", "poster"]
+        ordered_keys = []
+        for k in std_keys:
+            if k in item:
+                ordered_keys.append(k)
+        for k in keys:
+            if k not in ordered_keys:
+                ordered_keys.append(k)
+        summary = [f"**{idx}. Dizi**"]
+        for k in ordered_keys:
+            v = item.get(k, "—")
+            if isinstance(v, list):
+                if k == "comments":
+                    v_str = f"{len(v)} yorum"
+                else:
+                    v_str = str(v)
+            else:
+                v_str = str(v)
+            summary.append(f"{k}: {v_str}")
+        st.markdown(" | ".join(summary))
         idx += 1
-    df = pd.DataFrame(rows, columns=["No", "Tür", "Başlık", "Yıl", "IMDb", "RT", "CS", "Statü"])
-    st.dataframe(df, use_container_width=True)
 from tmdb import search_movie, search_tv, search_by_actor
 from omdb import get_ratings
 import csv
