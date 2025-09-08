@@ -1,63 +1,3 @@
-import pandas as pd
-
-# --- Sync summary table helper ---
-def _show_sync_summary(label, movies, series):
-    """
-    Show a summary listing of exported movies and series.
-    """
-    st.markdown(f"### 🔍 {label} — Senkronize Edilenler")
-    idx = 1
-    for item in (movies or []):
-        # Prepare all keys to be included
-        keys = list(item.keys())
-        # Always show standard fields first if present
-        std_keys = ["title", "year", "imdb", "imdbRating", "rt", "cineselectRating", "status", "comments", "poster"]
-        # Compose ordered keys: std_keys first, then any other keys
-        ordered_keys = []
-        for k in std_keys:
-            if k in item:
-                ordered_keys.append(k)
-        for k in keys:
-            if k not in ordered_keys:
-                ordered_keys.append(k)
-        # Build formatted string
-        summary = [f"**{idx}. Film**"]
-        for k in ordered_keys:
-            v = item.get(k, "—")
-            # Format lists (like comments) as count or short preview
-            if isinstance(v, list):
-                if k == "comments":
-                    v_str = f"{len(v)} yorum"
-                else:
-                    v_str = str(v)
-            else:
-                v_str = str(v)
-            summary.append(f"{k}: {v_str}")
-        st.markdown(" | ".join(summary))
-        idx += 1
-    for item in (series or []):
-        keys = list(item.keys())
-        std_keys = ["title", "year", "imdb", "imdbRating", "rt", "cineselectRating", "status", "comments", "poster"]
-        ordered_keys = []
-        for k in std_keys:
-            if k in item:
-                ordered_keys.append(k)
-        for k in keys:
-            if k not in ordered_keys:
-                ordered_keys.append(k)
-        summary = [f"**{idx}. Dizi**"]
-        for k in ordered_keys:
-            v = item.get(k, "—")
-            if isinstance(v, list):
-                if k == "comments":
-                    v_str = f"{len(v)} yorum"
-                else:
-                    v_str = str(v)
-            else:
-                v_str = str(v)
-            summary.append(f"{k}: {v_str}")
-        st.markdown(" | ".join(summary))
-        idx += 1
 from tmdb import search_movie, search_tv, search_by_actor
 from omdb import get_ratings
 import csv
@@ -658,8 +598,8 @@ def sync_with_firebase(sort_mode="imdb"):
     }
     with open("favorites_stw.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
+        st.write("🔍 FAVORITES DEBUG (output):", output_data)
     st.success("✅ favorites_stw.json dosyası yerel olarak oluşturuldu.")
-    _show_sync_summary("To-Watch", export_movies, export_series)
 
     # GitHub'a push et
     push_favorites_to_github()
@@ -725,8 +665,8 @@ def sync_watched_with_firebase(sort_mode="imdb"):
     }
     with open("favorites_watched.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
+        st.write("🔍 FAVORITES WATCHED DEBUG (output):", output_data)
     st.success("✅ favorites_watched.json dosyası yerel olarak oluşturuldu.")
-    _show_sync_summary("Watched", export_movies, export_series)
 
     # Push to the correct GitHub repo (serkansu/serkan-watched-addon)
     github_token = os.getenv("GITHUB_TOKEN")
@@ -1552,100 +1492,26 @@ if fav_section == "📌 İzlenecekler":
         # Alternatively, for a single centered bold line:
         # st.markdown(f"<div style='text-align:center;font-weight:bold;font-size:20px;'>Filmler: {movie_count} &nbsp;|&nbsp; Diziler: {series_count} &nbsp;|&nbsp; Toplam: {total}</div>", unsafe_allow_html=True)
     show_favorites_count()
-    # --- Sort options for İzlenecekler ---
-    sort_choices_to_watch = ["", "CS", "IMDb", "RT", "Year"]
-    sort_option_to_watch = st.selectbox(
-        "Sort by (To-Watch):",
-        sort_choices_to_watch,
-        index=0,
-        key="to_watch_sort"
-    )
-    # Now, collect the to_watch items (movies or shows)
     if media_type == "Movie":
-        favorites = [m for m in st.session_state.get("favorite_movies", []) if (m.get("type") == "movie" or m.get("type") is None) and m.get("status") == "to_watch"]
+        show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
-        favorites = [s for s in st.session_state.get("favorite_series", []) if (s.get("type") == "show") and (s.get("status") == "to_watch" or s.get("status") is None)]
-    else:
-        favorites = []
-    # Sorting logic for İzlenecekler
-    if sort_option_to_watch == "" or not sort_option_to_watch:
-        # Default: sort by cineselectRating desc, then imdbRating desc
-        favorites = sorted(
-            favorites,
-            key=lambda f: (
-                int(f.get("cineselectRating") or 0),
-                float(f.get("imdbRating") or 0)
-            ),
-            reverse=True
-        )
-    elif sort_option_to_watch == "CS":
-        favorites = sorted(favorites, key=lambda f: int(f.get("cineselectRating") or 0), reverse=True)
-    elif sort_option_to_watch == "IMDb":
-        favorites = sorted(favorites, key=lambda f: float(f.get("imdbRating") or 0), reverse=True)
-    elif sort_option_to_watch == "RT":
-        favorites = sorted(favorites, key=lambda f: float(f.get("rt") or 0), reverse=True)
-    elif sort_option_to_watch == "Year":
-        favorites = sorted(favorites, key=lambda f: int(f.get("year") or 0), reverse=True)
-    # Now call show_favorites with the sorted list
-    def show_favorites_sorted(fav_type, label, favorites_list):
-        # This function should be the same as show_favorites but using favorites_list instead of querying session_state
-        # For brevity, we'll just call the original show_favorites if it uses the current list, else you may need to refactor.
-        # Here, we assume show_favorites can be replaced by inline rendering, or you call your own rendering logic.
-        # For now, let's just assign to st.session_state temporarily (hacky, but works for now)
-        if fav_type == "movie":
-            st.session_state["favorite_movies_sorted"] = favorites_list
-            show_favorites("movie", "Filmler", use_sorted=True)
-        elif fav_type == "show":
-            st.session_state["favorite_series_sorted"] = favorites_list
-            show_favorites("show", "Diziler", use_sorted=True)
-    # Patch show_favorites to use favorites_list if use_sorted is True
-    import types
-    if "show_favorites_orig" not in globals():
-        show_favorites_orig = show_favorites
-        def show_favorites(fav_type, label, use_sorted=False):
-            if use_sorted:
-                if fav_type == "movie":
-                    favorites = st.session_state["favorite_movies_sorted"]
-                elif fav_type == "show":
-                    favorites = st.session_state["favorite_series_sorted"]
-                else:
-                    favorites = []
-                # Use the original function, but monkey-patch the favorites variable if needed
-                return show_favorites_orig(fav_type, label, favorites)
-            else:
-                return show_favorites_orig(fav_type, label)
-        globals()["show_favorites"] = show_favorites
-    if media_type == "Movie":
-        show_favorites_sorted("movie", "Filmler", favorites)
-    elif media_type == "TV Show":
-        show_favorites_sorted("show", "Diziler", favorites)
+        show_favorites("show", "Diziler")
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
     # Insert sort option selectbox for watched items
-    sort_choices_watched = ["", "Watched Date", "IMDb", "RT", "CineSelect", "Year"]
     sort_option_watched = st.selectbox(
         "Sort by (Watched):",
-        sort_choices_watched,
+        ["Watched Date", "IMDb", "RT", "CineSelect", "Year"],
         index=0,
         key="watched_sort"
     )
-    st.subheader(f"🎬 İzlenenler (sort: {sort_option_watched or 'Default'})")
+    st.subheader(f"🎬 İzlenenler (sort: {sort_option_watched})")
     watched_docs = db.collection("favorites").where("status", "==", "watched").stream()
     watched_items = [doc.to_dict() for doc in watched_docs]
     def _watched_sort_key(fav):
         return parse_turkish_or_iso_date(fav.get("watchedAt"))
     # Conditional sorting based on selected sort option
-    if sort_option_watched == "" or not sort_option_watched:
-        # Default: watchedAt desc, then imdbRating desc
-        watched_items = sorted(
-            watched_items,
-            key=lambda f: (
-                parse_turkish_or_iso_date(f.get("watchedAt")),
-                float(f.get("imdbRating") or 0)
-            ),
-            reverse=True
-        )
-    elif sort_option_watched == "Watched Date":
+    if sort_option_watched == "Watched Date":
         watched_items = sorted(watched_items, key=_watched_sort_key, reverse=True)
     elif sort_option_watched == "IMDb":
         watched_items = sorted(watched_items, key=lambda f: float(f.get("imdbRating") or 0), reverse=True)
