@@ -1028,11 +1028,25 @@ def show_favorites(fav_type, label, favorites=None):
     if page_key not in st.session_state:
         st.session_state[page_key] = 1
 
-    # Slice favorites according to current page
-    display_favorites = favorites[:page_size * st.session_state[page_key]]
+    # Calculate slice boundaries
+    start_idx = (st.session_state[page_key] - 1) * page_size
+    end_idx = st.session_state[page_key] * page_size
+    display_favorites = favorites[start_idx:end_idx]
 
-    # Render only sliced favorites
-    favorites = display_favorites
+    # Keep cumulative favorites in session_state
+    if f"{page_key}_shown" not in st.session_state:
+        st.session_state[f"{page_key}_shown"] = []
+    st.session_state[f"{page_key}_shown"].extend(display_favorites)
+
+    # Remove duplicates
+    seen_ids = set()
+    cumulative = []
+    for fav in st.session_state[f"{page_key}_shown"]:
+        fid = fav.get("id")
+        if fid not in seen_ids:
+            seen_ids.add(fid)
+            cumulative.append(fav)
+    favorites = cumulative
 
     # Inject JS to detect scroll bottom and auto-increase page
     scroll_js = f"""
