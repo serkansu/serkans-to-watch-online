@@ -1146,22 +1146,15 @@ def show_favorites(fav_type, label, favorites=None):
 
     # --- Incremental scroll for Izlenecekler ---
     page_size = 50
-    page_key = f"to_watch_page_{fav_type}"
+    page_key = f"{st.session_state['fav_section']}_{fav_type}_page"
     if page_key not in st.session_state:
         st.session_state[page_key] = 1
 
     end_idx = st.session_state[page_key] * page_size
     display_favorites = favorites[:end_idx]
 
-    # Eğer daha fazla öğe varsa buton ekle
-    if end_idx < len(favorites):
-        if st.button("🔽 Daha Fazla Yükle", key=f"load_more_{fav_type}_{page_key}_{end_idx}"):
-            st.session_state[page_key] += 1
-            st.rerun()
-    favorites = display_favorites
-
     st.markdown(f"### 📁 {label}")
-    for idx, fav in enumerate(favorites):
+    for idx, fav in enumerate(display_favorites):
         imdb_display = (
             f"{float(fav.get('imdbRating', 0) or 0):.1f}"
             if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
@@ -1473,6 +1466,12 @@ def show_favorites(fav_type, label, favorites=None):
                             st.rerun()
                     with cols_edit[1]:
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
+
+    # Eğer daha fazla öğe varsa buton ekle (after rendering all currently visible items)
+    if end_idx < len(favorites):
+        if st.button("🔽 Daha Fazla Yükle", key=f"load_more_{fav_type}_{page_key}_{end_idx}"):
+            st.session_state[page_key] += 1
+            st.rerun()
 
 if fav_section == "📌 İzlenecekler":
     # Improved favorite counts display (before showing lists)
