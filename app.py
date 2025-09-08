@@ -604,6 +604,121 @@ def sync_with_firebase(sort_mode="imdb"):
     # GitHub'a push et
     push_favorites_to_github()
 
+
+# --- New: Sync Watched with Firebase/GitHub for watched items only ---
+def sync_watched_with_firebase(sort_mode="imdb"):
+    """Export watched movies/series to favorites_watched.json and push to serkansu/serkan-watched-addon."""
+    favorites_data = {
+        "movies": st.session_state.get("favorite_movies", []),
+        "shows": st.session_state.get("favorite_series", [])
+    }
+    fix_invalid_imdb_ids(favorites_data)
+    # Normalize type after IMDb correction
+    for section in ["movies", "shows"]:
+        for item in favorites_data[section]:
+            t = (item.get("type") or "").lower()
+            if t in ["tv", "tvshow", "show", "series"]:
+                item["type"] = "show"
+            elif t in ["movie", "film"]:
+                item["type"] = "movie"
+    # Eksik imdb id'leri tamamla (same as in sync_with_firebase)
+    for section in ["movies", "shows"]:
+        for item in favorites_data[section]:
+            if not item.get("imdb") or item.get("imdb") == "":
+                title = item.get("title")
+                year = item.get("year")
+                raw_type = item.get("type", "").lower()
+                section_name = section.lower()
+                is_series_by_section = section_name in ["shows", "series"]
+                is_series_by_type = raw_type in ["series", "tv", "tv_show", "tvshow", "show"]
+                is_series = is_series_by_section or is_series_by_type
+                item["type"] = "show" if is_series else "movie"
+                imdb_id = get_imdb_id_from_tmdb(title, year, is_series=is_series)
+                stats = get_ratings(imdb_id)
+                imdb_rating = stats.get("imdb_rating") if stats else None
+                rt_score = stats.get("rt") if stats else None
+                item["imdb"] = imdb_id
+                item["imdbRating"] = float(imdb_rating) if imdb_rating is not None else 0.0
+                item["rt"] = int(rt_score) if rt_score is not None else 0
+                append_seed_rating(imdb_id, title, year, imdb_rating, rt_score)
+    # seed_ratings.csv içinde her favorinin olduğundan emin ol (CSV'de zaten varsa eklenmez)
+    for _section in ("movies", "shows"):
+        for _it in favorites_data.get(_section, []):
+            append_seed_rating(
+                imdb_id=_it.get("imdb"),
+                title=_it.get("title"),
+                year=_it.get("year"),
+                imdb_rating=_it.get("imdbRating"),
+                rt_score=_it.get("rt"),
+            )
+    # ---- Only export watched items (status == "watched")
+    movies_to_export = [x for x in favorites_data.get("movies", []) if x.get("status") == "watched"]
+    shows_to_export  = [x for x in favorites_data.get("shows",  []) if x.get("status") == "watched"]
+    # ---- Apply export ordering (same as to_watch)
+    sorted_movies = sort_flat_for_export(movies_to_export, sort_mode)
+    sorted_series = sort_flat_for_export(shows_to_export, sort_mode)
+    export_movies = [_strip_non_export_fields(x) for x in sorted_movies]
+    export_series = [_strip_non_export_fields(x) for x in sorted_series]
+    output_data = {
+        "movies": export_movies,
+        "series": export_series,
+    }
+    with open("favorites_watched.json", "w", encoding="utf-8") as f:
+        json.dump(output_data, f, ensure_ascii=False, indent=4, cls=_EnhancedJSONEncoder)
+        st.write("🔍 FAVORITES WATCHED DEBUG (output):", output_data)
+    st.success("✅ favorites_watched.json dosyası yerel olarak oluşturuldu.")
+
+    # Push to the correct GitHub repo (serkansu/serkan-watched-addon)
+    github_token = os.getenv("GITHUB_TOKEN")
+    if not github_token:
+        st.warning("⚠️ GITHUB_TOKEN environment variable is missing!")
+        st.error("❌ GitHub token bulunamadı. Environment variable ayarlanmalı.")
+        return
+    file_path = "favorites_watched.json"
+    repo_owner = "serkansu"
+    repo_name = "serkan-watched-addon"
+    commit_message = f"Update {file_path} via Streamlit sync (watched)"
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_path}"
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    try:
+        with open(file_path, "rb") as f:
+            content = f.read()
+    except FileNotFoundError:
+        st.warning(f"⚠️ Dosya bulunamadı, atlandı: {file_path}")
+        return
+    encoded_content = base64.b64encode(content).decode("utf-8")
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        sha = response.json().get("sha")
+    elif response.status_code == 404:
+        sha = None
+    else:
+        st.error(f"❌ GitHub API erişim hatası ({file_path} → {repo_owner}/{repo_name}): {response.status_code}")
+        try:
+            st.code(response.json())
+        except Exception:
+            pass
+        return
+    payload = {
+        "message": commit_message,
+        "content": encoded_content,
+        "branch": "main",
+    }
+    if sha:
+        payload["sha"] = sha
+    put_response = requests.put(url, headers=headers, json=payload)
+    if put_response.status_code not in (200, 201):
+        st.error(f"❌ Push başarısız ({file_path} → {repo_owner}/{repo_name}): {put_response.status_code}")
+        try:
+            st.code(put_response.json())
+        except Exception:
+            pass
+    else:
+        st.success(f"✅ Push OK: {file_path} → {repo_owner}/{repo_name}")
+
 # Firestore will be initialized AFTER auth gate below.
 
 # --- Inserted: Page config and auth gate ---
@@ -677,17 +792,20 @@ if "show_posters" not in st.session_state:
 if "sync_sort_mode" not in st.session_state:
     st.session_state["sync_sort_mode"] = "cc"
 
-tcol1, tcol2, tcol3, tcol_sp = st.columns([1.2, 1.6, 1.6, 4])
+# -- Toolbar with new watched sync button --
+tcol1, tcol2, tcol3, tcol4, tcol_sp = st.columns([1.2, 1.6, 1.8, 1.8, 4])
 with tcol1:
     if st.button("🖼️ Toggle Posters", key="toolbar_toggle_posters"):
         st.session_state["show_posters"] = not st.session_state.get("show_posters", True)
-
 with tcol2:
     if st.button("📂 JSON & CSV Sync", key="toolbar_sync"):
         sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
         st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
-
 with tcol3:
+    if st.button("📂 JSON & CSV Sync (Watched)", key="toolbar_sync_watched"):
+        sync_watched_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
+        st.success("✅ favorites_watched.json senkronize edildi (Watched).")
+with tcol4:
     if st.button("📊 Favori Sayıları", key="toolbar_counts"):
         show_favorites_count()
 # --- /Quick Toolbar ---
@@ -712,6 +830,10 @@ with st.expander("✨ Options"):
     if st.button("📂 JSON & CSV Sync"):
         sync_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
         st.success("✅ favorites_stw.json ve seed_ratings.csv senkronize edildi.")
+    # 3b. Watched Sync
+    if st.button("📂 JSON & CSV Sync (Watched)"):
+        sync_watched_with_firebase(sort_mode=st.session_state.get("sync_sort_mode", "cc"))
+        st.success("✅ favorites_watched.json senkronize edildi (Watched).")
     st.radio(
         "Sync sıralaması",
         ["imdb", "cc", "year"],
@@ -1028,53 +1150,15 @@ def show_favorites(fav_type, label, favorites=None):
     if page_key not in st.session_state:
         st.session_state[page_key] = 1
 
-    # Calculate slice boundaries
-    start_idx = (st.session_state[page_key] - 1) * page_size
     end_idx = st.session_state[page_key] * page_size
-    display_favorites = favorites[start_idx:end_idx]
+    display_favorites = favorites[:end_idx]
 
-    # Keep cumulative favorites in session_state
-    if f"{page_key}_shown" not in st.session_state:
-        st.session_state[f"{page_key}_shown"] = []
-    st.session_state[f"{page_key}_shown"].extend(display_favorites)
-
-    # Remove duplicates
-    seen_ids = set()
-    cumulative = []
-    for fav in st.session_state[f"{page_key}_shown"]:
-        fid = fav.get("id")
-        if fid not in seen_ids:
-            seen_ids.add(fid)
-            cumulative.append(fav)
-    favorites = cumulative
-
-    # Inject JS to detect scroll bottom and auto-increase page
-    scroll_js = f"""
-    <script>
-    var bottomSent = false;
-    window.onscroll = function() {{
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 10) {{
-            if (!bottomSent) {{
-                fetch('/_stcore/streamlit/command', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{'command': 'increment_page', 'key': '{page_key}'}})
-                }});
-                bottomSent = true;
-            }}
-        }} else {{
-            bottomSent = false;
-        }}
-    }};
-    </script>
-    """
-    st.markdown(scroll_js, unsafe_allow_html=True)
-
-    # Handle page increment command
-    if "_command" in st.session_state and st.session_state["_command"].get("command") == "increment_page" and st.session_state["_command"].get("key") == page_key:
-        st.session_state[page_key] += 1
-        del st.session_state["_command"]
-        st.rerun()
+    # Eğer daha fazla öğe varsa buton ekle
+    if end_idx < len(favorites):
+        if st.button("🔽 Daha Fazla Yükle", key=f"load_more_{fav_type}_{page_key}_{end_idx}"):
+            st.session_state[page_key] += 1
+            st.rerun()
+    favorites = display_favorites
 
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(favorites):
