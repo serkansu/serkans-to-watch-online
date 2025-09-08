@@ -1492,16 +1492,15 @@ if fav_section == "📌 İzlenecekler":
         # Alternatively, for a single centered bold line:
         # st.markdown(f"<div style='text-align:center;font-weight:bold;font-size:20px;'>Filmler: {movie_count} &nbsp;|&nbsp; Diziler: {series_count} &nbsp;|&nbsp; Toplam: {total}</div>", unsafe_allow_html=True)
     show_favorites_count()
-    # --- JSON & CSV Sync for İzlenecekler: add radio group for sync order ---
-    st.markdown("##### JSON & CSV Sync")
+    # --- Move sync order radio below "Sort by" selectbox ---
+    # The selectbox for sort_option is already defined above; insert the radio after it.
     sync_order_to_watch = st.radio(
         "Sync sıralaması (İzlenecekler):",
         ["CineSelect", "IMDb", "Year"],
         index=0,
-        key="sync_order_to_watch"
+        key="sync_order_to_watch",
+        horizontal=True
     )
-    # The actual sync button (if it exists) would go here, this just adds the radio group above/below as needed.
-    # (Assume the sync button is below, so we show the radio group above)
     if media_type == "Movie":
         show_favorites("movie", "Filmler")
     elif media_type == "TV Show":
@@ -1515,13 +1514,13 @@ elif fav_section == "🎬 İzlenenler":
         index=0,
         key="watched_sort"
     )
-    # --- JSON & CSV Sync (Watched): add radio group for sync order ---
-    st.markdown("##### JSON & CSV Sync (Watched)")
+    # --- Move sync order radio below watched sort selectbox ---
     sync_order_watched = st.radio(
         "Sync sıralaması (İzlenenler):",
         ["Watched Date", "CineSelect", "IMDb", "Year"],
         index=0,
-        key="sync_order_watched"
+        key="sync_order_watched",
+        horizontal=True
     )
     st.subheader(f"🎬 İzlenenler (sort: {sort_option_watched})")
     watched_docs = db.collection("favorites").where("status", "==", "watched").stream()
