@@ -654,9 +654,9 @@ def sync_watched_with_firebase(sort_mode="imdb"):
     # ---- Only export watched items (status == "watched")
     movies_to_export = [x for x in favorites_data.get("movies", []) if x.get("status") == "watched"]
     shows_to_export  = [x for x in favorites_data.get("shows",  []) if x.get("status") == "watched"]
-    # ---- Apply export ordering (same as to_watch)
-    sorted_movies = sort_flat_for_export(movies_to_export, sort_mode)
-    sorted_series = sort_flat_for_export(shows_to_export, sort_mode)
+    # ---- Sort watched items by watched date descending (ignore sort_mode)
+    sorted_movies = sorted(movies_to_export, key=lambda it: parse_turkish_or_iso_date(it.get("watchedAt")), reverse=True)
+    sorted_series = sorted(shows_to_export, key=lambda it: parse_turkish_or_iso_date(it.get("watchedAt")), reverse=True)
     export_movies = [_strip_non_export_fields(x) for x in sorted_movies]
     export_series = [_strip_non_export_fields(x) for x in sorted_series]
     output_data = {
