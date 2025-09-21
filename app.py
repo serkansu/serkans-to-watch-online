@@ -1411,6 +1411,18 @@ def show_favorites(fav_type, label, favorites=None):
                         st.success(f"✅ {fav['title']} blacklist'e taşındı!")
                         st.rerun()
                 # --- Action buttons: edit, pin, etc. ---
+                if st.button("🔄 IMDb&RT", key=f"refresh_{fav['id']}"):
+                    imdb_id = fav.get("imdb")
+                    if imdb_id:
+                        stats = get_ratings(imdb_id)  # mevcut API fonksiyonunu çağır
+                        imdb_rating = stats.get("imdb_rating") if stats else None
+                        rt_score = stats.get("rt") if stats else None
+                        db.collection("favorites").document(fav["id"]).update({
+                            "imdbRating": float(imdb_rating) if imdb_rating is not None else 0.0,
+                            "rt": int(rt_score) if rt_score is not None else 0,
+                        })
+                        st.success(f"✅ IMDb/RT güncellendi: {fav.get('title','?')}")
+                        st.rerun()
                 if st.button("✏️", key=f"edit_{fav['id']}"):
                     _safe_set_state(f"edit_mode_{fav['id']}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
