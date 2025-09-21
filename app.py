@@ -278,6 +278,38 @@ def read_seed_rating(imdb_id: str):
         pass
     return None
 # --- /seed okuma fonksiyonu ---
+def get_ratings(imdb_id):
+    import requests
+    OMDB_API_KEY = os.getenv("OMDB_API_KEY")
+    url = f"http://www.omdbapi.com/?i={imdb_id}&apikey={OMDB_API_KEY}"
+    try:
+        r = requests.get(url)
+        data = r.json()
+    except Exception as e:
+        return {"imdb_rating": None, "rt": None, "error": str(e)}
+
+    imdb_rating = None
+    rt_score = None
+
+    # IMDb rating doğrudan al
+    if "imdbRating" in data and data["imdbRating"] != "N/A":
+        try:
+            imdb_rating = float(data["imdbRating"])
+        except Exception:
+            imdb_rating = None
+
+    # Rotten Tomatoes puanını Ratings array’den al
+    if "Ratings" in data:
+        for rating in data["Ratings"]:
+            if rating["Source"] == "Rotten Tomatoes":
+                try:
+                    rt_score = int(rating["Value"].replace("%", ""))
+                except Exception:
+                    rt_score = None
+                break
+
+    return {"imdb_rating": imdb_rating, "rt": rt_score}
+
 def get_imdb_id_from_tmdb(title, year=None, is_series=False):
     tmdb_api_key = os.getenv("TMDB_API_KEY")
     if not tmdb_api_key:
