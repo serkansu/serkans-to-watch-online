@@ -1069,42 +1069,42 @@ if query:
             # Bulk-selection checkbox
         _sel_key = f"sel_{item['id']}_{idx}"
         if st.checkbox("Seç", key=_sel_key):
-                _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
-                selected_items.append((item, _media_key_bulk))
+            _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
+            selected_items.append((item, _media_key_bulk))
 
-            # --- warn inline if this exact title+year already exists in favorites ---
+        # --- warn inline if this exact title+year already exists in favorites ---
         _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
         if media_type == "Movie" and _item_key in _movies_idx:
-                _fav, _pos = _movies_idx[_item_key]
-                _cs = _fav.get('cineselectRating', 'N/A')
-                _added = _fav.get('addedAt')
-                try:
-                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
-                except Exception:
-                    _added_txt = "—"
-                st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
+            _fav, _pos = _movies_idx[_item_key]
+            _cs = _fav.get('cineselectRating', 'N/A')
+            _added = _fav.get('addedAt')
+            try:
+                _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
+            except Exception:
+                _added_txt = "—"
+            st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
         elif media_type == "TV Show" and _item_key in _shows_idx:
-                _fav, _pos = _shows_idx[_item_key]
-                _cs = _fav.get('cineselectRating', 'N/A')
-                _added = _fav.get('addedAt')
-                try:
-                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
-                except Exception:
-                    _added_txt = "—"
-                st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
+            _fav, _pos = _shows_idx[_item_key]
+            _cs = _fav.get('cineselectRating', 'N/A')
+            _added = _fav.get('addedAt')
+            try:
+                _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
+            except Exception:
+                _added_txt = "—"
+            st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
 
-            # IMDb rating display: prefer explicit imdbRating; if not present, use numeric `imdb` when it is a rating
-            _imdb_rating_field = item.get("imdbRating", None)
-            if isinstance(_imdb_rating_field, (int, float)):
-                imdb_display = f"{float(_imdb_rating_field):.1f}" if _imdb_rating_field > 0 else "N/A"
-            elif isinstance(item.get("imdb"), (int, float)):
-                imdb_display = f"{float(item['imdb']):.1f}" if item["imdb"] > 0 else "N/A"
-            else:
-                imdb_display = "N/A"
+        # IMDb rating display: prefer explicit imdbRating; if not present, use numeric `imdb`
+        _imdb_rating_field = item.get("imdbRating", None)
+        if isinstance(_imdb_rating_field, (int, float)):
+            imdb_display = f"{float(_imdb_rating_field):.1f}" if _imdb_rating_field > 0 else "N/A"
+        elif isinstance(item.get("imdb"), (int, float)):
+            imdb_display = f"{float(item['imdb']):.1f}" if item["imdb"] > 0 else "N/A"
+        else:
+            imdb_display = "N/A"
 
-            rt_val = item.get("rt", 0)
-            rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
-            st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
+        rt_val = item.get("rt", 0)
+        rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
+        st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
             manual_key = f"manual_{item['id']}"
             manual_val = st.number_input(
