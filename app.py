@@ -10,6 +10,80 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+
+# --- Arama Bölümü ---
+import streamlit as st
+
+# Varsayalım ki bu fonksiyonlar zaten tanımlı:
+# search_movie(query), search_person(query, job=None), search_by_person_id(person_id)
+
+# --- Arama kutusu ---
+st.markdown("---")
+st.header("🔍 Arama")
+query = st.text_input("Film, kişi veya yönetmen ara", key="main_search_query")
+if query:
+    search_type = st.radio(
+        "Ne aramak istersiniz?",
+        ["Movies", "People", "Directors"],
+        horizontal=True,
+        key="search_type"
+    )
+
+    if search_type == "Movies":
+        movies = search_movie(query)
+        # En yeni yıldan eskiye sırala
+        movies = sorted(
+            movies,
+            key=lambda m: (m.get("release_date") or m.get("first_air_date") or ""),
+            reverse=True
+        )
+        if movies:
+            movie_titles = [f"{m.get('title') or m.get('name')} ({(m.get('release_date') or m.get('first_air_date') or '')[:4]})" for m in movies]
+            idx = st.selectbox("Film seçin", range(len(movies)), format_func=lambda i: movie_titles[i], key="search_movie_select")
+            selected_movie = movies[idx]
+            st.write("Seçilen film:", selected_movie.get("title") or selected_movie.get("name"))
+            # Burada film detaylarını gösterebilirsiniz...
+        else:
+            st.info("Sonuç bulunamadı.")
+
+    elif search_type == "People":
+        persons = search_person(query)
+        if persons:
+            person_names = [f"{p.get('name')} ({p.get('known_for_department','')})" for p in persons]
+            idx = st.selectbox("Kişi seçin", range(len(persons)), format_func=lambda i: person_names[i], key="search_person_select")
+            selected_person = persons[idx]
+            st.write("Seçilen kişi:", selected_person.get("name"))
+            # Kişinin filmleri/dizileri
+            credits = search_by_person_id(selected_person.get("id"))
+            # release_date veya first_air_date'e göre sırala
+            credits = sorted(credits, key=lambda m: (m.get("release_date") or m.get("first_air_date") or ""), reverse=True)
+            st.markdown("**Filmleri/Dizileri:**")
+            for c in credits:
+                st.write(f"- {c.get('title') or c.get('name')} ({(c.get('release_date') or c.get('first_air_date') or '')[:4]})")
+        else:
+            st.info("Sonuç bulunamadı.")
+
+    elif search_type == "Directors":
+        # search_person(query, job="Director") fonksiyonu varsa kullan, yoksa filtrele
+        try:
+            directors = search_person(query, job="Director")
+        except TypeError:
+            # Eğer job parametresi yoksa, kendimiz filtreleyelim
+            persons_all = search_person(query)
+            directors = [p for p in persons_all if p.get("known_for_department") == "Directing"]
+        if directors:
+            director_names = [f"{d.get('name')}" for d in directors]
+            idx = st.selectbox("Yönetmen seçin", range(len(directors)), format_func=lambda i: director_names[i], key="search_director_select")
+            selected_director = directors[idx]
+            st.write("Seçilen yönetmen:", selected_director.get("name"))
+            credits = search_by_person_id(selected_director.get("id"))
+            # release_date veya first_air_date'e göre sırala
+            credits = sorted(credits, key=lambda m: (m.get("release_date") or m.get("first_air_date") or ""), reverse=True)
+            st.markdown("**Yönetmenlik yaptığı filmler/diziler:**")
+            for c in credits:
+                st.write(f"- {c.get('title') or c.get('name')} ({(c.get('release_date') or c.get('first_air_date') or '')[:4]})")
+        else:
+            st.info("Sonuç bulunamadı.")
 # --- Turkish month and day name mappings ---
 TURKISH_MONTHS = {
     "January": "Ocak",
@@ -901,24 +975,44 @@ query = st.text_input(
 st.session_state.query = query
 # --- Kişi & film arama önerileri ---
 if query:
-    # Önce kişi araması yapalım
+    # Önce kişi araması yap
     persons = search_person(query)
     if persons:
-        person_names = [f"{p.get('name')} (id: {p.get('id')})" for p in persons]
-        selected_person = st.selectbox("🎭 Bulunan kişiler:", ["Seçiniz..."] + person_names, key="person_select")
+        person_names = [
+            f"{p.get('name')} (id: {p.get('id')})" for p in persons
+        ]
+        selected_person = st.selectbox(
+            "🎭 Bulunan kişiler:", ["Seçiniz..."] + person_names,
+            key="person_select"
+        )
         if selected_person != "Seçiniz...":
+            # Seçilen kişiye ait filmleri/TV’leri getir
             person_id = int(selected_person.split("id:")[1].strip(") "))
-            # seçilen kişiye ait filmleri/TV'leri getir
             credits = search_by_person_id(person_id)
             if credits:
-                credit_titles = [f"{c.get('title') or c.get('name')} ({c.get('release_date') or c.get('first_air_date') or ''})"
-                                 for c in credits]
+                credit_titles = [
+                    f"{c.get('title') or c.get('name')} ({(c.get('release_date') or c.get('first_air_date') or '')[:4]})"
+                    for c in credits
+                ]
                 st.write("🎬 Bu kişinin projeleri:", credit_titles)
-    # Film araması da yap
+
+    # Her durumda film araması da yap
     movies = search_movie(query)
     if movies:
-        movie_options = [f"{m.get('title')} ({m.get('release_date', '')[:4]})" for m in movies]
-        st.write("🎞️ Film sonuçları:", movie_options)
+        movie_options = [
+            f"{m.get('title')} ({(m.get('release_date') or m.get('first_air_date') or '')[:4]})"
+            for m in movies
+        ]
+        # Filmleri dropdown olarak gösterelim
+        selected_movie = st.selectbox(
+            "🎬 Bulunan filmler:",
+            ["Seçiniz..."] + movie_options,
+            key="movie_select"
+        )
+        if selected_movie != "Seçiniz...":
+            st.success(f"Seçtiğiniz film: {selected_movie}")
+    else:
+        st.info("Hiç film bulunamadı.")
 # --- Build quick lookups for existing favorites (to warn inside search results)
 _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
