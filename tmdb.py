@@ -21,12 +21,12 @@ def search_movie(query: str):
     results = []
     for item in res.get("results", []):
         results.append({
-            "id": f"tmdb{item.get('id')}",             # <- TMDB id'si
+            "id": f"tmdb{item.get('id')}",
             "title": item.get("title") or "",
             "year": (item.get("release_date") or "")[:4] or "N/A",
             "poster": _poster_url(item.get("poster_path")),
             "description": item.get("overview", ""),
-            "imdb": "",                                 # puanlar sonradan CSV/OMDb ile
+            "imdb": "",
             "rt": 0
         })
     return results
@@ -56,7 +56,7 @@ def search_tv(query: str):
 def search_by_actor(actor_name: str):
     """
     Oyuncu adına göre arama yapar, TMDB 'person' sonucundaki known_for listesini
-    film/dizi kartlarına dönüştürür. (id=tmdb{number}, media_type ekler.)
+    film/dizi kartlarına dönüştürür.
     """
     if not API_KEY:
         return []
@@ -82,10 +82,67 @@ def search_by_actor(actor_name: str):
     return out
 
 
+def search_by_director(name: str, media_type: str = "movie"):
+    """
+    Yönetmene göre arama yapar, TMDB 'person' sonucundaki known_for listesinden movie/tv döndürür.
+    """
+    if not API_KEY:
+        return []
+    url = f"{BASE_URL}/search/person"
+    res = requests.get(url, params={"api_key": API_KEY, "query": name}).json()
+
+    results = []
+    for person in res.get("results", []):
+        for known in person.get("known_for", []):
+            if media_type == "movie" and known.get("media_type") != "movie":
+                continue
+            if media_type == "tv" and known.get("media_type") != "tv":
+                continue
+            results.append({
+                "id": f"tmdb{known.get('id')}",
+                "title": known.get("title") or known.get("name") or "",
+                "year": (known.get("release_date") or known.get("first_air_date") or "")[:4] or "N/A",
+                "poster": _poster_url(known.get("poster_path")),
+                "description": known.get("overview", ""),
+                "imdb": "",
+                "rt": 0,
+                "media_type": known.get("media_type")
+            })
+    return results
+
+
+def search_by_writer(name: str, media_type: str = "movie"):
+    """
+    Yazar / yaratıcı adına göre arama yapar (TMDB person).
+    """
+    if not API_KEY:
+        return []
+    url = f"{BASE_URL}/search/person"
+    res = requests.get(url, params={"api_key": API_KEY, "query": name}).json()
+
+    results = []
+    for person in res.get("results", []):
+        for known in person.get("known_for", []):
+            if media_type == "movie" and known.get("media_type") != "movie":
+                continue
+            if media_type == "tv" and known.get("media_type") != "tv":
+                continue
+            results.append({
+                "id": f"tmdb{known.get('id')}",
+                "title": known.get("title") or known.get("name"),
+                "year": (known.get("release_date") or known.get("first_air_date") or "")[:4] or "N/A",
+                "poster": _poster_url(known.get("poster_path")),
+                "description": known.get("overview", ""),
+                "imdb": "",
+                "rt": 0,
+                "media_type": known.get("media_type")
+            })
+    return results
+
+
 def add_to_favorites(item: dict, stars: int, media_type: str):
     """
     Yerel favorites.json'a ekler (Streamlit dışı basit kullanım için tutuluyor).
-    Uygulamanın ana akışı Firestore yazıyor; bunu istersen kaldırabilirsin.
     """
     filename = "favorites.json"
     try:
