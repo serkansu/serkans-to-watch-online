@@ -1130,6 +1130,13 @@ if query:
             movies, shows = load_favorites()
             st.session_state["favorite_movies"] = movies
             st.session_state["favorite_series"] = shows
+
+            # 🔹 Arama kutusunu temizle
+            st.session_state.query = ""
+            st.session_state.query_input = ""
+            st.session_state.clear_search = True
+
+            # 🔹 Ana ekrana dön
             st.rerun()
 
 st.divider()
