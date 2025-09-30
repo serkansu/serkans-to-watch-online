@@ -1059,6 +1059,13 @@ if query:
 
             st.markdown(f"**{idx+1}. {item['title']} ({item.get('year', '—')})**")
 
+        if selected_items and st.button("➕ Add Selected to Favorites", key="btn_add_selected_bulk"):
+            for _it, _mkey in selected_items:
+                _add_item_to_favorites(_it, _mkey, cs_value=100)
+        st.success(f"✅ {len(selected_items)} öğe favorilere eklendi (CS=100).")
+        st.toast("Refreshing…", icon="🔄")
+        time.sleep(1.2)
+        st.rerun()
             # Bulk-selection checkbox
             _sel_key = f"sel_{item['id']}_{idx}"
             if st.checkbox("Seç", key=_sel_key):
