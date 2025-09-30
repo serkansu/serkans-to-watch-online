@@ -1059,55 +1059,48 @@ if query:
 
             st.markdown(f"**{idx+1}. {item['title']} ({item.get('year', '—')})**")
 
-        if selected_items and st.button("➕ Add Selected to Favorites", key="btn_add_selected_bulk"):
-            for _it, _mkey in selected_items:
-                _add_item_to_favorites(_it, _mkey, cs_value=100)
-        st.success(f"✅ {len(selected_items)} öğe favorilere eklendi (CS=100).")
-        st.toast("Refreshing…", icon="🔄")
-        time.sleep(1.2)
-        st.rerun()
             # Bulk-selection checkbox
-        _sel_key = f"sel_{item['id']}_{idx}"
-        if st.checkbox("Seç", key=_sel_key):
-            _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
-            selected_items.append((item, _media_key_bulk))
+            _sel_key = f"sel_{item['id']}_{idx}"
+            if st.checkbox("Seç", key=_sel_key):
+                _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
+                selected_items.append((item, _media_key_bulk))
 
-        # --- warn inline if this exact title+year already exists in favorites ---
-        _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
-        if media_type == "Movie" and _item_key in _movies_idx:
-            _fav, _pos = _movies_idx[_item_key]
-            _cs = _fav.get('cineselectRating', 'N/A')
-            _added = _fav.get('addedAt')
-            try:
-                _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
-            except Exception:
-                _added_txt = "—"
-            st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
-        elif media_type == "TV Show" and _item_key in _shows_idx:
-            _fav, _pos = _shows_idx[_item_key]
-            _cs = _fav.get('cineselectRating', 'N/A')
-            _added = _fav.get('addedAt')
-            try:
-                _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
-            except Exception:
-                _added_txt = "—"
-            st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
+            # --- warn inline if this exact title+year already exists in favorites ---
+            _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
+            if media_type == "Movie" and _item_key in _movies_idx:
+                _fav, _pos = _movies_idx[_item_key]
+                _cs = _fav.get('cineselectRating', 'N/A')
+                _added = _fav.get('addedAt')
+                try:
+                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                except Exception:
+                    _added_txt = "—"
+                st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
+            elif media_type == "TV Show" and _item_key in _shows_idx:
+                _fav, _pos = _shows_idx[_item_key]
+                _cs = _fav.get('cineselectRating', 'N/A')
+                _added = _fav.get('addedAt')
+                try:
+                    _added_txt = format_turkish_datetime(_added) if hasattr(_added, "strftime") else str(_added) if _added else "—"
+                except Exception:
+                    _added_txt = "—"
+                st.warning(f"⚠️ Dikkat: Bu dizi listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
 
-        # IMDb rating display: prefer explicit imdbRating; if not present, use numeric `imdb`
-        _imdb_rating_field = item.get("imdbRating", None)
-        if isinstance(_imdb_rating_field, (int, float)):
-            imdb_display = f"{float(_imdb_rating_field):.1f}" if _imdb_rating_field > 0 else "N/A"
-        elif isinstance(item.get("imdb"), (int, float)):
-            imdb_display = f"{float(item['imdb']):.1f}" if item["imdb"] > 0 else "N/A"
-        else:
-            imdb_display = "N/A"
+            # IMDb rating display: prefer explicit imdbRating; if not present, use numeric `imdb`
+            _imdb_rating_field = item.get("imdbRating", None)
+            if isinstance(_imdb_rating_field, (int, float)):
+                imdb_display = f"{float(_imdb_rating_field):.1f}" if _imdb_rating_field > 0 else "N/A"
+            elif isinstance(item.get("imdb"), (int, float)):
+                imdb_display = f"{float(item['imdb']):.1f}" if item["imdb"] > 0 else "N/A"
+            else:
+                imdb_display = "N/A"
 
-        rt_val = item.get("rt", 0)
-        rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
-        st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
+            rt_val = item.get("rt", 0)
+            rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
+            st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
             manual_key = f"manual_{item['id']}"
-        manual_val = st.number_input(
+            manual_val = st.number_input(
                 "🎯 CineSelect Rating:",
                 min_value=1,
                 max_value=100,
@@ -2292,6 +2285,7 @@ elif fav_section == "🎬 İzlenenler":
                                     _safe_set_state(f"edit_mode_w_{fav['id']}", False)
                                     st.rerun()
 
+import time
 # --- Blacklist Section ---
 elif fav_section == "🖤 Blacklist":
     st.markdown("---")
@@ -2403,33 +2397,28 @@ elif fav_section == "🖤 Blacklist":
                 comments_sorted = sorted(
                     comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True
                 )
-
                 if comments_sorted:
                     for c_idx, c in enumerate(comments_sorted):
                         text = c.get("text", "")
-                        who  = c.get("watchedBy", "")
+                        who = c.get("watchedBy", "")
                         date = c.get("date", "")
-
                         # Sil
                         if st.button("🗑️ Yorum Sil", key=f"del_bl_comment_{fav['id']}_{c_idx}"):
                             new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                             db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
                             st.success("🗑️ Yorum silindi!")
                             st.rerun()
-
                         # Düzenleme modunu aç
                         if st.button("✏️ Yorumu Düzenle", key=f"edit_bl_comment_{fav['id']}_{c_idx}"):
                             _safe_set_state(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", True)
-
                         # Düzenleme UI
                         if st.session_state.get(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", False):
                             edit_text_key = f"edit_bl_text_{fav['id']}_{c_idx}"
-                            edit_who_key  = f"edit_bl_who_{fav['id']}_{c_idx}"
+                            edit_who_key = f"edit_bl_who_{fav['id']}_{c_idx}"
                             if edit_text_key not in st.session_state:
                                 _safe_set_state(edit_text_key, text)
                             if edit_who_key not in st.session_state:
                                 _safe_set_state(edit_who_key, who or "öz")
-
                             edit_cols = st.columns([3, 2])
                             with edit_cols[0]:
                                 new_text = st.text_area(
@@ -2447,7 +2436,6 @@ elif fav_section == "🖤 Blacklist":
                                            if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
                                     key=edit_who_key
                                 )
-
                             if st.button("💾 Kaydet", key=f"save_bl_comment_{fav['id']}_{c_idx}"):
                                 from datetime import datetime as _dt
                                 now_str = format_turkish_datetime(_dt.now())
