@@ -1107,7 +1107,7 @@ if query:
         st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
             manual_key = f"manual_{item['id']}"
-            manual_val = st.number_input(
+        manual_val = st.number_input(
                 "🎯 CineSelect Rating:",
                 min_value=1,
                 max_value=100,
