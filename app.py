@@ -1074,7 +1074,7 @@ if query:
 
             # --- warn inline if this exact title+year already exists in favorites ---
         _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
-            if media_type == "Movie" and _item_key in _movies_idx:
+        if media_type == "Movie" and _item_key in _movies_idx:
                 _fav, _pos = _movies_idx[_item_key]
                 _cs = _fav.get('cineselectRating', 'N/A')
                 _added = _fav.get('addedAt')
@@ -1083,7 +1083,7 @@ if query:
                 except Exception:
                     _added_txt = "—"
                 st.warning(f"⚠️ Dikkat: Bu film listende zaten var → sıra: #{_pos} • CS: {_cs} • eklenme: {_added_txt}", icon="⚠️")
-            elif media_type == "TV Show" and _item_key in _shows_idx:
+        elif media_type == "TV Show" and _item_key in _shows_idx:
                 _fav, _pos = _shows_idx[_item_key]
                 _cs = _fav.get('cineselectRating', 'N/A')
                 _added = _fav.get('addedAt')
