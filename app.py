@@ -1,4 +1,4 @@
-from tmdb import search_movie, search_tv, search_by_actor
+from tmdb import search_movie, search_tv, search_by_actor, search_person, search_by_person_id
 from omdb import get_ratings
 import csv
 from pathlib import Path
@@ -899,7 +899,26 @@ query = st.text_input(
     key="query_input",
 )
 st.session_state.query = query
-
+# --- Kişi & film arama önerileri ---
+if query:
+    # Önce kişi araması yapalım
+    persons = search_person(query)
+    if persons:
+        person_names = [f"{p.get('name')} (id: {p.get('id')})" for p in persons]
+        selected_person = st.selectbox("🎭 Bulunan kişiler:", ["Seçiniz..."] + person_names, key="person_select")
+        if selected_person != "Seçiniz...":
+            person_id = int(selected_person.split("id:")[1].strip(") "))
+            # seçilen kişiye ait filmleri/TV'leri getir
+            credits = search_by_person_id(person_id)
+            if credits:
+                credit_titles = [f"{c.get('title') or c.get('name')} ({c.get('release_date') or c.get('first_air_date') or ''})"
+                                 for c in credits]
+                st.write("🎬 Bu kişinin projeleri:", credit_titles)
+    # Film araması da yap
+    movies = search_movie(query)
+    if movies:
+        movie_options = [f"{m.get('title')} ({m.get('release_date', '')[:4]})" for m in movies]
+        st.write("🎞️ Film sonuçları:", movie_options)
 # --- Build quick lookups for existing favorites (to warn inside search results)
 _current_sort = st.session_state.get("fav_sort", "CineSelect")
 _movies_all = list(st.session_state.get("favorite_movies", []))
