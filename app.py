@@ -1073,7 +1073,7 @@ if query:
                 selected_items.append((item, _media_key_bulk))
 
             # --- warn inline if this exact title+year already exists in favorites ---
-            _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
+        _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
             if media_type == "Movie" and _item_key in _movies_idx:
                 _fav, _pos = _movies_idx[_item_key]
                 _cs = _fav.get('cineselectRating', 'N/A')
