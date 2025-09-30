@@ -1067,8 +1067,8 @@ if query:
         time.sleep(1.2)
         st.rerun()
             # Bulk-selection checkbox
-            _sel_key = f"sel_{item['id']}_{idx}"
-            if st.checkbox("Seç", key=_sel_key):
+        _sel_key = f"sel_{item['id']}_{idx}"
+        if st.checkbox("Seç", key=_sel_key):
                 _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
                 selected_items.append((item, _media_key_bulk))
 
