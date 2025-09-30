@@ -1125,7 +1125,11 @@ if query:
                 _add_item_to_favorites(_it, _mkey, cs_value=100)
             st.success(f"✅ {len(selected_items)} öğe favorilere eklendi (CS=100).")
             st.toast("Refreshing…", icon="🔄")
-            time.sleep(1.2)
+            # 🔥 Yeni eklenen öğelerin ekranda görünmesi için cache temizle ve tekrar yükle
+            st.cache_data.clear()
+            movies, shows = load_favorites()
+            st.session_state["favorite_movies"] = movies
+            st.session_state["favorite_series"] = shows
             st.rerun()
 
 st.divider()
