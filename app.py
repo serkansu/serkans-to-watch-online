@@ -3,19 +3,18 @@ from firebase_admin import credentials, firestore
 import os
 import json
 
+import base64
 # Initialize Firebase only once
 if not firebase_admin._apps:
-    firebase_key_env = os.getenv("FIREBASE_KEY")
-    if firebase_key_env:
+    fb_b64 = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON_B64")
+    if fb_b64:
         try:
-            cred = credentials.Certificate(json.loads(firebase_key_env))
-        except Exception:
-            # If FIREBASE_KEY is not JSON string but file path
-            cred = credentials.Certificate(firebase_key_env)
-    elif os.path.exists("firebase_key.json"):
-        cred = credentials.Certificate("firebase_key.json")
+            fb_json = base64.b64decode(fb_b64).decode("utf-8")
+            cred = credentials.Certificate(json.loads(fb_json))
+        except Exception as e:
+            raise RuntimeError(f"Invalid FIREBASE_SERVICE_ACCOUNT_JSON_B64: {e}")
     else:
-        raise FileNotFoundError("Firebase key not found. Set FIREBASE_KEY env var or provide firebase_key.json.")
+        raise FileNotFoundError("Firebase key not found. Set FIREBASE_SERVICE_ACCOUNT_JSON_B64 in Render environment variables.")
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
