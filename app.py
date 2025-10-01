@@ -1585,26 +1585,28 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
-    # Fetch from Firestore only if favorites not provided; filter by to_watch/None/""
-    if favorites is None:
-        to_watch_docs = db.collection("favorites").stream()
-        movies = []
-        shows = []
-        for doc in to_watch_docs:
-            fav = doc.to_dict()
-            if fav.get("status") not in ("to_watch", None, ""):
-                continue
-            if fav.get("type") == "movie":
-                movies.append(fav)
-            elif fav.get("type") in ["show", "tv"]:
-                shows.append(fav)
-        if fav_type == "movie":
-            favorites = movies
-        else:
-            favorites = shows
-    favorites = sorted(favorites, key=get_sort_key, reverse=True)
+    # Firestore’dan sadece type’a göre getir
+    docs = db.collection("favorites").where("type", "==", fav_type).stream()
+    favorites = [doc.to_dict() for doc in docs]
 
-    # --- Incremental scroll for Izlenecekler ---
+    st.markdown(f"### 📁 {label}")
+    if not favorites:
+        st.info("Hiç kayıt bulunamadı.")
+        return
+
+    for idx, fav in enumerate(favorites):
+        fav_title = fav.get("title", "Unknown")
+        fav_year = fav.get("year", "—")
+        cols = st.columns([1, 5])
+        with cols[0]:
+            if fav.get("poster"):
+                st.image(fav["poster"], width=120)
+        with cols[1]:
+            imdb_display = fav.get("imdbRating", "N/A")
+            rt_display = fav.get("rt", "N/A")
+            cs_display = fav.get("cineselectRating", "N/A")
+            st.markdown(f"**{idx+1}. {fav_title} ({fav_year})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {cs_display}")
+        # --- Incremental scroll for Izlenecekler ---
     page_size = 50
     page_key = f"{st.session_state['fav_section']}_{fav_type}_page"
     if page_key not in st.session_state:
