@@ -1355,6 +1355,14 @@ def show_favorites(fav_type, label, favorites=None):
                     st.rerun()
                 else:
                     st.warning("⚠️ Firestore’da kaydı bulunamadığı için silinemedi.")
+            # 🗑️ Yerelden Silme Butonu (Firestore kaydı olmayanlar için)
+            if st.button("🗑️ Yerelden Sil", key=f"delete_local_{fid}"):
+                if fav_type == "movie":
+                    st.session_state["favorite_movies"] = [f for f in st.session_state["favorite_movies"] if f != fav]
+                else:
+                    st.session_state["favorite_series"] = [f for f in st.session_state["favorite_series"] if f != fav]
+                st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (Firestore kaydı yoktu).")
+                st.rerun()
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
