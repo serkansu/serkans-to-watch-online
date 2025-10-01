@@ -1290,6 +1290,8 @@ def show_favorites(fav_type, label, favorites=None):
                             st.rerun()
             # --- Yorum Ekle expander, İzlenenler-style, immediately after comments ---
             with st.expander("💬 Yorum Ekle"):
+                st.write("DEBUG fav keys:", list(fav.keys()))
+                st.write("DEBUG fav data:", fav)
                 comment_key = f"to_watch_comment_add_{fav['id']}"
                 comment_wb_key = f"to_watch_comment_add_wb_{fav['id']}"
                 if comment_key not in st.session_state:
