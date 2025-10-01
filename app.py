@@ -1474,10 +1474,19 @@ def show_favorites(fav_type, label, favorites=None):
 
                 st.session_state["force_no_reload"] = True
                 st.cache_data.clear()
-                st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (zorla).")
-                # --- Ekle: movie_cache temizle ve sayfayı yeniden yükle ---
-                st.session_state.pop("movie_cache", None)
-                st.experimental_rerun()
+
+                # ✅ Yerel session_state ve cache temizleme
+                if "movie_cache" in st.session_state:
+                    st.session_state["movie_cache"] = [
+                        m for m in st.session_state["movie_cache"] if m.get("fid") != fid
+                    ]
+
+                if "favorites_movie" in st.session_state:
+                    st.session_state["favorites_movie"] = [
+                        m for m in st.session_state["favorites_movie"] if m.get("fid") != fid
+                    ]
+
+                st.success(f"🗑️ {fav.get('title','Film')} listeden kalıcı olarak kaldırıldı (zorla).")
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
