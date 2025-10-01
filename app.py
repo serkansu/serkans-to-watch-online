@@ -774,9 +774,14 @@ st.markdown(
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-movies, shows = load_favorites()
-st.session_state["favorite_movies"] = movies
-st.session_state["favorite_series"] = shows
+# --- Force skip reload (for local delete)
+if not st.session_state.get("force_no_reload", False):
+    movies, shows = load_favorites()
+    st.session_state["favorite_movies"] = movies
+    st.session_state["favorite_series"] = shows
+else:
+    # Bir kereye mahsus atla ve flag'i sıfırla
+    st.session_state["force_no_reload"] = False
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
@@ -1398,6 +1403,7 @@ def show_favorites(fav_type, label, favorites=None):
                                 and str(f.get("year")) == str(fav.get("year")))
                         )
                     ]
+                st.session_state["force_no_reload"] = True
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (Firestore kaydı yoktu).")
                 st.rerun()
             with st.expander("✨ Options"):
