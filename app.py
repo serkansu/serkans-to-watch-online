@@ -798,7 +798,7 @@ import streamlit as st
 # --- Cached Firestore favorites loader ---
 @st.cache_data(ttl=240)  # Cache Firestore favorites for 240 seconds
 def load_favorites():
-    db = get_firestore()
+    global db
     # Fetch with IN queries to include legacy values
     movie_docs = db.collection("favorites").where("type", "in", ["movie", "film"]).stream()
     show_docs  = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"]).stream()
