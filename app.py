@@ -438,6 +438,10 @@ def load_favorites():
             item["type"] = "show"
         else:
             item["type"] = "movie"
+    # Filter out deleted_titles if present in session_state
+    if "deleted_titles" in st.session_state:
+        movies = [m for m in movies if _norm_title(m.get("title")) not in st.session_state["deleted_titles"]]
+        shows = [s for s in shows if _norm_title(s.get("title")) not in st.session_state["deleted_titles"]]
     return movies, shows
 def fix_invalid_imdb_ids(data):
     for section in ["movies", "shows"]:
@@ -1469,6 +1473,7 @@ def show_favorites(fav_type, label, favorites=None):
                 })
 
                 st.session_state["force_no_reload"] = True
+                st.cache_data.clear()
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (zorla).")
                 st.rerun()
             with st.expander("✨ Options"):
