@@ -1,9 +1,9 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-import os
-import json
-
 import base64
+import json
+import os
+import time
 # Initialize Firebase only once
 if not firebase_admin._apps:
     fb_b64 = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON_B64")
@@ -167,14 +167,6 @@ from tmdb import search_movie, search_tv, search_by_actor, search_person, search
 from omdb import get_ratings
 import csv
 from pathlib import Path
-import streamlit as st
-import requests
-import firebase_admin
-import base64
-from firebase_admin import credentials, firestore
-import json
-import os
-import time
 # --- TMDB -> IMDb ID helper (cached) ---
 def tmdb_imdb_id(item_id, media_type="movie"):
     """
