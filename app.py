@@ -10,6 +10,46 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+# --- TMDB -> IMDb ID helper (cached) ---
+def tmdb_imdb_id(item_id, media_type="movie"):
+    """
+    TMDB item ID'den (movie veya tv) IMDb ID döndürür.
+    Sonuçları st.session_state içinde cache'ler.
+    """
+    import os, requests, streamlit as st
+    cache_key = f"{media_type}:{item_id}"
+    cache = st.session_state.setdefault("tmdb_imdb_cache", {})
+    if cache_key in cache:
+        return cache[cache_key]
+
+    api_key = os.getenv("TMDB_API_KEY")
+    base = "https://api.themoviedb.org/3"
+    path = "tv" if media_type == "tv" else "movie"
+    url = f"{base}/{path}/{item_id}?api_key={api_key}&append_to_response=external_ids"
+
+    try:
+        res = requests.get(url, timeout=10).json()
+        imdb_id = (res.get("external_ids") or {}).get("imdb_id")
+    except Exception:
+        imdb_id = None
+
+    cache[cache_key] = imdb_id
+    return imdb_id
+# --- Helper functions for TMDb person credits ---
+def get_actor_movies(person_id):
+    import requests, os
+    api_key = os.getenv("TMDB_API_KEY")
+    url = f"https://api.themoviedb.org/3/person/{person_id}/movie_credits?api_key={api_key}&language=en-US"
+    res = requests.get(url).json()
+    return res.get("cast", [])
+
+def get_director_movies(person_id):
+    import requests, os
+    api_key = os.getenv("TMDB_API_KEY")
+    url = f"https://api.themoviedb.org/3/person/{person_id}/movie_credits?api_key={api_key}&language=en-US"
+    res = requests.get(url).json()
+    crew = res.get("crew", [])
+    return [c for c in crew if c.get("job") == "Director"]
 
 # --- Arama Bölümü ---
 import streamlit as st
@@ -53,13 +93,64 @@ if query:
             idx = st.selectbox("Kişi seçin", range(len(persons)), format_func=lambda i: person_names[i], key="search_person_select")
             selected_person = persons[idx]
             st.write("Seçilen kişi:", selected_person.get("name"))
-            # Kişinin filmleri/dizileri
-            credits = search_by_person_id(selected_person.get("id"))
-            # release_date veya first_air_date'e göre sırala
+
+            # Rol seçimi: Actor veya Director
+            role = st.radio("Rol seçiniz", ["Actor", "Director"], horizontal=True, key="role_select")
+
+            if role == "Actor":
+                credits = get_actor_movies(selected_person.get("id"))
+            else:
+                credits = get_director_movies(selected_person.get("id"))
+
             credits = sorted(credits, key=lambda m: (m.get("release_date") or m.get("first_air_date") or ""), reverse=True)
-            st.markdown("**Filmleri/Dizileri:**")
+            st.markdown("**Projeler:**")
+
+            selected_items = []
             for c in credits:
-                st.write(f"- {c.get('title') or c.get('name')} ({(c.get('release_date') or c.get('first_air_date') or '')[:4]})")
+                title = c.get("title") or c.get("name")
+                year = (c.get("release_date") or c.get("first_air_date") or "????")[:4]
+                poster_path = c.get("poster_path")
+                media_type = "tv" if c.get("media_type") == "tv" else "movie"
+                imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)
+
+                cols = st.columns([1, 5])
+                with cols[0]:
+                    if poster_path:
+                        poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
+                        if imdb_id:
+                            st.markdown(
+                                f'<a href="https://www.imdb.com/title/{imdb_id}/" target="_blank">'
+                                f'<img src="{poster_url}" width="100"/></a>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.image(poster_url, width=100)
+                with cols[1]:
+                    if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
+                        selected_items.append({
+                            "id": str(c["id"]),
+                            "title": title,
+                            "year": year,
+                            "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
+                            "imdb": imdb_id,
+                            "type": "movie" if media_type == "movie" else "show"
+                        })
+
+            if selected_items and st.button("➕ Hepsini Favorilere Ekle", key="add_people_bulk"):
+                for item in selected_items:
+                    db.collection("favorites").document(item["id"]).set({
+                        "title": item["title"],
+                        "year": item["year"],
+                        "poster": item["poster"],
+                        "imdb": item["imdb"],
+                        "type": item["type"],
+                        "status": "to_watch",
+                        "cineselectRating": 100,
+                        "imdbRating": 0.0,
+                        "rt": 0,
+                    })
+                st.success(f"✅ {len(selected_items)} proje favorilere eklendi (CS=100).")
+                st.rerun()
         else:
             st.info("Sonuç bulunamadı.")
 
@@ -76,12 +167,56 @@ if query:
             idx = st.selectbox("Yönetmen seçin", range(len(directors)), format_func=lambda i: director_names[i], key="search_director_select")
             selected_director = directors[idx]
             st.write("Seçilen yönetmen:", selected_director.get("name"))
-            credits = search_by_person_id(selected_director.get("id"))
-            # release_date veya first_air_date'e göre sırala
+            credits = get_director_movies(selected_director.get("id"))
             credits = sorted(credits, key=lambda m: (m.get("release_date") or m.get("first_air_date") or ""), reverse=True)
             st.markdown("**Yönetmenlik yaptığı filmler/diziler:**")
+
+            selected_items = []
             for c in credits:
-                st.write(f"- {c.get('title') or c.get('name')} ({(c.get('release_date') or c.get('first_air_date') or '')[:4]})")
+                title = c.get("title") or c.get("name")
+                year = (c.get("release_date") or c.get("first_air_date") or "????")[:4]
+                poster_path = c.get("poster_path")
+                media_type = "tv" if c.get("media_type") == "tv" else "movie"
+                imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)
+
+                cols = st.columns([1, 5])
+                with cols[0]:
+                    if poster_path:
+                        poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
+                        if imdb_id:
+                            st.markdown(
+                                f'<a href="https://www.imdb.com/title/{imdb_id}/" target="_blank">'
+                                f'<img src="{poster_url}" width="100"/></a>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.image(poster_url, width=100)
+                with cols[1]:
+                    if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
+                        selected_items.append({
+                            "id": str(c["id"]),
+                            "title": title,
+                            "year": year,
+                            "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
+                            "imdb": imdb_id,
+                            "type": "movie" if media_type == "movie" else "show"
+                        })
+
+                if selected_items and st.button("➕ Hepsini Favorilere Ekle", key="add_directors_bulk"):
+                    for item in selected_items:
+                        db.collection("favorites").document(item["id"]).set({
+                            "title": item["title"],
+                            "year": item["year"],
+                            "poster": item["poster"],
+                            "imdb": item["imdb"],
+                            "type": item["type"],
+                            "status": "to_watch",
+                            "cineselectRating": 100,
+                            "imdbRating": 0.0,
+                            "rt": 0,
+                        })
+                    st.success(f"✅ {len(selected_items)} proje favorilere eklendi (CS=100).")
+                    st.rerun()
         else:
             st.info("Sonuç bulunamadı.")
 # --- Turkish month and day name mappings ---
