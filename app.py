@@ -414,35 +414,6 @@ def push_favorites_to_github():
 import streamlit as st
 from firebase_setup import get_firestore
 
-# --- Cached Firestore favorites loader ---
-@st.cache_data(ttl=240)  # Cache Firestore favorites for 240 seconds
-def load_favorites():
-    db = get_firestore()
-    # Fetch with IN queries to include legacy values
-    movie_docs = db.collection("favorites").where("type", "in", ["movie", "film"]).stream()
-    show_docs  = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"]).stream()
-
-    movies = [doc.to_dict() for doc in movie_docs]
-    shows  = [doc.to_dict() for doc in show_docs]
-
-    # Normalize type for all items
-    for item in movies:
-        t = (item.get("type") or "").lower()
-        if t in ["tv", "tvshow", "show", "series"]:
-            item["type"] = "show"
-        else:
-            item["type"] = "movie"
-    for item in shows:
-        t = (item.get("type") or "").lower()
-        if t in ["tv", "tvshow", "show", "series"]:
-            item["type"] = "show"
-        else:
-            item["type"] = "movie"
-    # Filter out deleted_titles if present in session_state
-    if "deleted_titles" in st.session_state:
-        movies = [m for m in movies if _norm_title(m.get("title")) not in st.session_state["deleted_titles"]]
-        shows = [s for s in shows if _norm_title(s.get("title")) not in st.session_state["deleted_titles"]]
-    return movies, shows
 def fix_invalid_imdb_ids(data):
     for section in ["movies", "shows"]:
         for item in data[section]:
@@ -778,23 +749,12 @@ st.markdown(
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-# Yalnızca ilk yüklemede Firestore'dan getir; yerel silme sonrası force_no_reload varsa eski veri yüklenmesin
-if (
-    "favorite_movies" not in st.session_state
-    or "favorite_series" not in st.session_state
-    or (not st.session_state.get("favorite_movies") and not st.session_state.get("favorite_series"))
-):
-    if not st.session_state.get("force_no_reload", False):
-        movies, shows = load_favorites()
-        # Daha önce silinmiş başlıkları tekrar ekleme
-        if "deleted_titles" in st.session_state:
-            movies = [m for m in movies if _norm_title(m.get("title")) not in st.session_state["deleted_titles"]]
-            shows = [s for s in shows if _norm_title(s.get("title")) not in st.session_state["deleted_titles"]]
-        st.session_state["favorite_movies"] = movies
-        st.session_state["favorite_series"] = shows
-    else:
-        # force_no_reload True olduğunda eski veriyi yeniden yükleme
-        st.session_state["force_no_reload"] = False
+# Sadece ilk yüklemede Firestore'dan getir (cache yok)
+if "favorite_movies" not in st.session_state or "favorite_series" not in st.session_state:
+    movies = [doc.to_dict() for doc in db.collection("favorites").where("type", "in", ["movie", "film"]).stream()]
+    shows = [doc.to_dict() for doc in db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"]).stream()]
+    st.session_state["favorite_movies"] = movies
+    st.session_state["favorite_series"] = shows
 
 # --- Mobile Home Screen & Favicons ---
 # High-res icons for iOS/Android home screen shortcuts and browser favicons.
