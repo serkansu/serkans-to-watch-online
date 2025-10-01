@@ -274,9 +274,8 @@ if query:
                 year = (c.get("release_date") or c.get("first_air_date") or "????")[:4]
                 poster_path = c.get("poster_path")
                 media_type = "tv" if c.get("media_type") == "tv" else "movie"
-                # imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)  # Removed lazy fetch
-
                 cols = st.columns([1, 5])
+                imdb_id = None
                 with cols[0]:
                     if poster_path:
                         poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
@@ -289,16 +288,16 @@ if query:
                             )
                         else:
                             st.image(poster_url, width=100)
-                                    with cols[1]:
-                                        if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
-                                            selected_items.append({
-                                                "id": str(c["id"]),
-                                                "title": title,
-                                                "year": year,
-                                                "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
-                                                "imdb": None,
-                                                "type": "movie" if media_type == "movie" else "show"
-                                            })
+                with cols[1]:
+                    if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
+                        selected_items.append({
+                            "id": str(c["id"]),
+                            "title": title,
+                            "year": year,
+                            "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
+                            "imdb": imdb_id if imdb_id else None,
+                            "type": "movie" if media_type == "movie" else "show"
+                        })
 
             # Bulk add button is always visible; validate selection on click
             if st.button("➕ Hepsini Favorilere Ekle", key="add_people_bulk"):
