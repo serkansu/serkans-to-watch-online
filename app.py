@@ -846,8 +846,8 @@ with tcol4:
     if st.button("📊 Favori Sayıları", key="toolbar_counts"):
         show_favorites_count()
 
-# --- Geçici Temizleme Butonu: Firestore'da olmayanları temizle ---
-# Bu butonu Quick Toolbar'ın hemen altına koyduk.
+# --- Geçici Temizleme Butonları ---
+# Firestore'da olmayanları temizle (geçici)
 if st.button("🧹 Firestore'da olmayanları temizle (geçici)"):
     cleaned_movies = []
     for f in st.session_state.get("favorite_movies", []):
@@ -865,7 +865,27 @@ if st.button("🧹 Firestore'da olmayanları temizle (geçici)"):
 
     st.success("🧹 Firestore’da olmayan tüm öğeler listeden temizlendi!")
     st.rerun()
-# --- /Geçici Temizleme Butonu ---
+
+# 🧹 Yerel Tekrarları Temizle
+if st.button("🧹 Yerel Tekrarları Temizle"):
+    seen = set()
+    cleaned_movies = []
+    for f in st.session_state.get("favorite_movies", []):
+        key = f"{f.get('title','').strip().lower()}_{f.get('year','')}"
+        if key not in seen:
+            seen.add(key)
+            cleaned_movies.append(f)
+    cleaned_series = []
+    for f in st.session_state.get("favorite_series", []):
+        key = f"{f.get('title','').strip().lower()}_{f.get('year','')}"
+        if key not in seen:
+            seen.add(key)
+            cleaned_series.append(f)
+    st.session_state["favorite_movies"] = cleaned_movies
+    st.session_state["favorite_series"] = cleaned_series
+    st.success("Yerel tekrarlar temizlendi ✅")
+    st.rerun()
+# --- /Geçici Temizleme Butonları ---
 
 # ☁️ Eksik Firestore kayıtlarını ekleme butonu
 if st.button("☁️ Eksik Firestore Kayıtlarını Ekle"):
