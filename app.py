@@ -1201,13 +1201,12 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
-    # Fetch from Firestore only if favorites not provided; filter by to_watch/None/""
-    if favorites is None:
-        to_watch_docs = db.collection("favorites").where("type", "==", fav_type).stream()
-        favorites = [
-            doc.to_dict() for doc in to_watch_docs
-            if doc.to_dict().get("status") in ("to_watch", None, "")
-        ]
+    # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
+    firestore_favorites = [
+        doc.to_dict() for doc in db.collection("favorites").where("type", "==", fav_type).stream()
+        if doc.to_dict().get("status") in ("to_watch", None, "")
+    ]
+    favorites = firestore_favorites
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler ---
@@ -1446,6 +1445,11 @@ def show_favorites(fav_type, label, favorites=None):
                         m for m in st.session_state["favorites_movie"] if m.get("fid") != fid
                     ]
 
+                # Firestore dışı eski cache'leri temizle
+                if "favorites_movies" in st.session_state:
+                    st.session_state.pop("favorites_movies")
+                if "favorites_shows" in st.session_state:
+                    st.session_state.pop("favorites_shows")
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kalıcı olarak kaldırıldı (zorla).")
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
