@@ -1580,11 +1580,21 @@ sort_option = st.selectbox(
 def show_favorites(fav_type, label, favorites=None):
     # Fetch from Firestore only if favorites not provided; filter by to_watch/None/""
     if favorites is None:
-        to_watch_docs = db.collection("favorites").where("type", "==", fav_type).stream()
-        favorites = [
-            doc.to_dict() for doc in to_watch_docs
-            if doc.to_dict().get("status") in ("to_watch", None, "")
-        ]
+        to_watch_docs = db.collection("favorites").stream()
+        movies = []
+        shows = []
+        for doc in to_watch_docs:
+            fav = doc.to_dict()
+            if fav.get("status") not in ("to_watch", None, ""):
+                continue
+            if fav.get("type") == "movie":
+                movies.append(fav)
+            elif fav.get("type") in ["show", "tv"]:
+                shows.append(fav)
+        if fav_type == "movie":
+            favorites = movies
+        else:
+            favorites = shows
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler ---
