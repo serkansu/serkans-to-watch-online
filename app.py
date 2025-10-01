@@ -66,8 +66,12 @@ def render_comments(fav, section="to_watch"):
                 db.collection("favorites").document(fav_id).update({"comments": new_comments})
                 fav["comments"] = new_comments
                 # Update session_state
-                for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                    if item.get("id") == fav_id:
+                for item in (
+                    st.session_state["favorite_movies"]
+                    if (fav.get("type") or "movie") == "movie"
+                    else st.session_state["favorite_series"]
+                ):
+                    if item.get("id", "") == fav_id:
                         item["comments"] = new_comments
                         break
                 st.success("🗑️ Yorum silindi!")
@@ -107,7 +111,7 @@ def render_comments(fav, section="to_watch"):
                     fav["comments"] = comments_sorted
                     # update session_state
                     for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                        if item.get("id") == fav_id:
+                        if item.get("id", "") == fav_id:
                             item["comments"] = comments_sorted
                             break
                     st.success("✏️ Yorum güncellendi!")
@@ -157,7 +161,7 @@ def render_comments(fav, section="to_watch"):
                 fav["comments"] = new_comments
                 for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                              else st.session_state["favorite_series"]):
-                    if item.get("id") == fav_id:
+                    if item.get("id", "") == fav_id:
                         item["comments"] = new_comments
                         break
                 _safe_set_state(comment_key, "")
@@ -270,20 +274,13 @@ if query:
                 year = (c.get("release_date") or c.get("first_air_date") or "????")[:4]
                 poster_path = c.get("poster_path")
                 media_type = "tv" if c.get("media_type") == "tv" else "movie"
-                imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)
+                # imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)  # Removed lazy fetch
 
                 cols = st.columns([1, 5])
                 with cols[0]:
                     if poster_path:
                         poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
-                        if imdb_id:
-                            st.markdown(
-                                f'<a href="https://www.imdb.com/title/{imdb_id}/" target="_blank">'
-                                f'<img src="{poster_url}" width="100"/></a>',
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            st.image(poster_url, width=100)
+                        st.image(poster_url, width=100)
                 with cols[1]:
                     if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
                         selected_items.append({
@@ -291,7 +288,7 @@ if query:
                             "title": title,
                             "year": year,
                             "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
-                            "imdb": imdb_id,
+                            "imdb": None,
                             "type": "movie" if media_type == "movie" else "show"
                         })
 
@@ -301,12 +298,14 @@ if query:
                     st.warning("⚠️ Önce birkaç proje seçmelisiniz.")
                 else:
                     for item in selected_items:
+                        _media_type_for_tmdb = "tv" if item.get("type") == "show" else "movie"
+                        imdb_id = tmdb_imdb_id(int(item["id"]), media_type=_media_type_for_tmdb)
                         db.collection("favorites").document(item["id"]).set({
                             "id": item["id"],
                             "title": item["title"],
                             "year": item["year"],
                             "poster": item["poster"],
-                            "imdb": item["imdb"],
+                            "imdb": imdb_id or "",
                             "type": item["type"],
                             "status": "to_watch",
                             "cineselectRating": 100,
@@ -341,20 +340,13 @@ if query:
                 year = (c.get("release_date") or c.get("first_air_date") or "????")[:4]
                 poster_path = c.get("poster_path")
                 media_type = "tv" if c.get("media_type") == "tv" else "movie"
-                imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)
+                # imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)  # Removed lazy fetch
 
                 cols = st.columns([1, 5])
                 with cols[0]:
                     if poster_path:
                         poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
-                        if imdb_id:
-                            st.markdown(
-                                f'<a href="https://www.imdb.com/title/{imdb_id}/" target="_blank">'
-                                f'<img src="{poster_url}" width="100"/></a>',
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            st.image(poster_url, width=100)
+                        st.image(poster_url, width=100)
                 with cols[1]:
                     if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
                         selected_items.append({
@@ -362,7 +354,7 @@ if query:
                             "title": title,
                             "year": year,
                             "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
-                            "imdb": imdb_id,
+                            "imdb": None,
                             "type": "movie" if media_type == "movie" else "show"
                         })
 
@@ -372,12 +364,14 @@ if query:
                     st.warning("⚠️ Önce birkaç proje seçmelisiniz.")
                 else:
                     for item in selected_items:
+                        _media_type_for_tmdb = "tv" if item.get("type") == "show" else "movie"
+                        imdb_id = tmdb_imdb_id(int(item["id"]), media_type=_media_type_for_tmdb)
                         db.collection("favorites").document(item["id"]).set({
                             "id": item["id"],
                             "title": item["title"],
                             "year": item["year"],
                             "poster": item["poster"],
-                            "imdb": item["imdb"],
+                            "imdb": imdb_id or "",
                             "type": item["type"],
                             "status": "to_watch",
                             "cineselectRating": 100,
@@ -644,13 +638,13 @@ def read_seed_rating(imdb_id: str):
                     ir = row.get("imdb_rating")
                     rt = row.get("rt")
                     try:
-                        ir_val = float(ir) if ir not in (None, "", "N/A") else None
+                        ir_val = float(ir) if ir not in (None, "", "N/A") else 0.0
                     except Exception:
-                        ir_val = None
+                        ir_val = 0.0
                     try:
-                        rt_val = int(float(rt)) if rt not in (None, "", "N/A") else None
+                        rt_val = int(float(rt)) if rt not in (None, "", "N/A") else 0
                     except Exception:
-                        rt_val = None
+                        rt_val = 0
                     return {"imdb_rating": ir_val, "rt": rt_val}
     except Exception:
         pass
@@ -1325,9 +1319,9 @@ def get_sort_key(fav):
     try:
         # Always return tuple: (CS, IMDb, Year) for CineSelect mode
         if sort_name == "CineSelect":
-            cs = int(fav.get("cineselectRating") or 0)
+            cs = int(fav.get("cineselectRating", "N/A") or 0)
             try:
-                imdb = float(fav.get("imdbRating") or 0)
+                imdb = float(fav.get("imdbRating", 0.0) or 0)
             except Exception:
                 imdb = 0.0
             try:
@@ -1339,7 +1333,7 @@ def get_sort_key(fav):
         elif sort_name == "IMDb":
             return float(fav.get("imdbRating") or 0)
         elif sort_name == "RT":
-            return float(fav.get("rt") or 0)
+            return float(fav.get("rt", 0) or 0)
         elif sort_name == "Year":
             return int(fav.get("year") or 0)
     except Exception:
@@ -1363,17 +1357,22 @@ def _add_item_to_favorites(item, media_key, cs_value=100):
     """Add one item to Firestore favorites with IMDb/RT enrichment and given CineSelect score."""
     from omdb import get_ratings, fetch_ratings  # ensure fetch_ratings is available
         # 🔥 Daha önce eklenmiş mi kontrolü
-    _doc_ref = db.collection("favorites").document(item["id"])
+    item_id = item.get("id", "")
+    item_title = item.get("title", "")
+    item_year = item.get("year", "")
+    item_poster = item.get("poster", None)
+    # check if already exists
+    _doc_ref = db.collection("favorites").document(item_id)
     _prev = _doc_ref.get()
     if _prev.exists:
-        st.warning(f"⚠️ {item['title']} zaten favorilerde var!", icon="⚠️")
+        st.warning(f"⚠️ {item_title} zaten favorilerde var!", icon="⚠️")
         return
     # 1) Ensure IMDb ID
-    imdb_id = (item.get("imdb") or "").strip()
+    imdb_id = (item.get("imdb", "") or "").strip()
     if not imdb_id or imdb_id == "tt0000000":
         imdb_id = get_imdb_id_from_tmdb(
-            title=item["title"],
-            year=item.get("year"),
+            title=item_title,
+            year=item_year,
             is_series=(media_key == "show"),
         )
 
@@ -1391,24 +1390,24 @@ def _add_item_to_favorites(item, media_key, cs_value=100):
         raw_id = (stats.get("raw") or {})
     # c) OMDb by Title/Year
     if not stats or ((stats.get("imdb_rating") in (None, 0, "N/A")) and (stats.get("rt") in (None, 0, "N/A"))):
-        ir, rt, raw_title = fetch_ratings(item["title"], item.get("year"))
+        ir, rt, raw_title = fetch_ratings(item_title, item_year)
         stats = {"imdb_rating": ir, "rt": rt}
 
     imdb_rating = float(stats.get("imdb_rating") or 0.0)
     rt_score    = int(stats.get("rt") or 0)
 
     # 3) Firestore write (preserve previous addedAt if exists)
-    _doc_ref = db.collection("favorites").document(item["id"])
+    _doc_ref = db.collection("favorites").document(item_id)
     _prev = _doc_ref.get()
     _prev_data = _prev.to_dict() if _prev.exists else {}
     _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
 
     payload = {
-        "id": item["id"],
-        "title": item["title"],
-        "year": item.get("year"),
+        "id": item_id,
+        "title": item_title,
+        "year": item_year,
         "imdb": imdb_id,
-        "poster": item.get("poster"),
+        "poster": item_poster,
         "imdbRating": imdb_rating,
         "rt": rt_score,
         "cineselectRating": int(cs_value) if cs_value is not None else 100,
@@ -1420,8 +1419,8 @@ def _add_item_to_favorites(item, media_key, cs_value=100):
     # 4) Ensure seed_ratings.csv has this row
     append_seed_rating(
         imdb_id=imdb_id,
-        title=item["title"],
-        year=item.get("year"),
+        title=item_title,
+        year=item_year,
         imdb_rating=imdb_rating,
         rt_score=rt_score,
     )
@@ -1452,15 +1451,18 @@ if query:
         selected_items = []
         for idx, item in enumerate(results):
             st.divider()
-            if item.get("poster") and show_posters:
-                # Prefer an actual IMDb ID (e.g., "tt0133093"); fall back across common key variants
+            item_id = item.get("id", "")
+            item_title = item.get("title", "")
+            item_year = item.get("year", "—")
+            item_poster = item.get("poster", None)
+            if item_poster and show_posters:
                 imdb_id_link = str(
-                    item.get("imdb")
-                    or item.get("imdb_id")
-                    or item.get("imdbID")
+                    item.get("imdb", "")
+                    or item.get("imdb_id", "")
+                    or item.get("imdbID", "")
                     or ""
                 ).strip()
-                poster_url = item["poster"]
+                poster_url = item_poster
                 if imdb_id_link.startswith("tt"):
                     st.markdown(
                         f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank" rel="noopener">'
@@ -1470,16 +1472,16 @@ if query:
                 else:
                     st.image(poster_url, width=180)
 
-            st.markdown(f"**{idx+1}. {item['title']} ({item.get('year', '—')})**")
+            st.markdown(f"**{idx+1}. {item_title} ({item_year})**")
 
             # Bulk-selection checkbox
-            _sel_key = f"sel_{item['id']}_{idx}"
+            _sel_key = f"sel_{item_id}_{idx}"
             if st.checkbox("Seç", key=_sel_key):
                 _media_key_bulk = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
                 selected_items.append((item, _media_key_bulk))
 
             # --- warn inline if this exact title+year already exists in favorites ---
-            _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
+            _item_key = f"{_norm_title(item_title)}::{str(item_year or '')}"
             if media_type == "Movie" and _item_key in _movies_idx:
                 _fav, _pos = _movies_idx[_item_key]
                 _cs = _fav.get('cineselectRating', 'N/A')
@@ -1503,8 +1505,8 @@ if query:
             _imdb_rating_field = item.get("imdbRating", None)
             if isinstance(_imdb_rating_field, (int, float)):
                 imdb_display = f"{float(_imdb_rating_field):.1f}" if _imdb_rating_field > 0 else "N/A"
-            elif isinstance(item.get("imdb"), (int, float)):
-                imdb_display = f"{float(item['imdb']):.1f}" if item["imdb"] > 0 else "N/A"
+            elif isinstance(item.get("imdb", None), (int, float)):
+                imdb_display = f"{float(item.get('imdb', 0)):.1f}" if item.get("imdb", 0) > 0 else "N/A"
             else:
                 imdb_display = "N/A"
 
@@ -1512,7 +1514,7 @@ if query:
             rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
             st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
-            manual_key = f"manual_{item['id']}"
+            manual_key = f"manual_{item_id}"
             manual_val = st.number_input(
                 "🎯 CineSelect Rating:",
                 min_value=1,
@@ -1522,11 +1524,11 @@ if query:
                 key=manual_key
             )
 
-            if st.button("Add to Favorites", key=f"btn_{item['id']}"):
+            if st.button("Add to Favorites", key=f"btn_{item_id}"):
                 media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
                 # Use the manual per-item CS value for single add
                 _add_item_to_favorites(item, media_key, cs_value=manual_val)
-                st.success(f"✅ {item['title']} added to favorites!")
+                st.success(f"✅ {item_title} added to favorites!")
                 st.session_state.clear_search = True
                 st.toast("Refreshing…", icon="🔄")
                 time.sleep(1.2)
@@ -1597,9 +1599,11 @@ def show_favorites(fav_type, label, favorites=None):
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(display_favorites):
         fav_id = fav.get('id', '')
+        fav_title = fav.get('title', '')
+        fav_year = fav.get('year', '')
         imdb_display = (
-            f"{float(fav.get('imdbRating', 0) or 0):.1f}"
-            if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
+            f"{float(fav.get('imdbRating', 0.0) or 0):.1f}"
+            if fav.get('imdbRating', 0.0) not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0.0), (int, float))
             else "N/A"
         )
         _rt_val = fav.get('rt', None)
@@ -1612,9 +1616,9 @@ def show_favorites(fav_type, label, favorites=None):
         with cols[0]:
             if show_posters and fav.get("poster"):
                 imdb_id_link = str(
-                    fav.get("imdb") or fav.get("imdb_id") or fav.get("imdbID") or ""
+                    fav.get("imdb", "") or fav.get("imdb_id", "") or fav.get("imdbID", "") or ""
                 ).strip()
-                poster_url = fav["poster"]
+                poster_url = fav.get("poster")
                 if imdb_id_link and imdb_id_link.startswith("tt"):
                     st.markdown(
                         f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank" rel="noopener">'
@@ -1624,7 +1628,7 @@ def show_favorites(fav_type, label, favorites=None):
                 else:
                     st.image(poster_url, width=120)
         with cols[1]:
-            st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
+            st.markdown(f"**{idx+1}. {fav_title} ({fav_year})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
             comments = fav.get("comments", [])
             from datetime import datetime as _dt
@@ -1649,7 +1653,7 @@ def show_favorites(fav_type, label, favorites=None):
                         fav["comments"] = new_comments
                         # update session_state immediately after Firestore update (mirror İzlenenler)
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                            if item.get("id") == fav_id:
+                            if item.get("id", "") == fav_id:
                                 item["comments"] = new_comments
                                 break
                         st.success("🗑️ Yorum silindi!")
@@ -1689,7 +1693,7 @@ def show_favorites(fav_type, label, favorites=None):
                             fav["comments"] = comments_sorted
                             # update session_state immediately after Firestore update (mirror İzlenenler)
                             for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                                if item.get("id") == fav_id:
+                                if item.get("id", "") == fav_id:
                                     item["comments"] = comments_sorted
                                     break
                             st.success("✏️ Yorum güncellendi!")
@@ -1741,7 +1745,7 @@ def show_favorites(fav_type, label, favorites=None):
                         # 3. session_state güncellemesi
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                                      else st.session_state["favorite_series"]):
-                            if item.get("id") == fav_id:
+                            if item.get("id", "") == fav_id:
                                 item["comments"] = new_comments
                                 break
                         # 4. _safe_set_state(comment_key, "")
@@ -1758,15 +1762,15 @@ def show_favorites(fav_type, label, favorites=None):
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 status_options = STATUS_OPTIONS
                 # Compute current status string with new logic
-                if fav.get("status") == "to_watch":
+                if fav.get("status", "") == "to_watch":
                     current_status_str = "to_watch"
-                elif fav.get("status") == "watched":
-                    wb = fav.get("watchedBy")
+                elif fav.get("status", "") == "watched":
+                    wb = fav.get("watchedBy", "")
                     if wb in ["öz", "ss", "öz❤️ss"]:
                         current_status_str = wb
                     else:
                         current_status_str = "n/w"
-                elif fav.get("status") == "blacklist":
+                elif fav.get("status", "") == "blacklist":
                     current_status_str = "🖤 BL"
                 else:
                     current_status_str = "to_watch"
@@ -1795,7 +1799,7 @@ def show_favorites(fav_type, label, favorites=None):
                             "cineselectRating": None,
                         })
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                            if item.get("id") == fav_id:
+                            if item.get("id", "") == fav_id:
                                 item.update({
                                     "status": "to_watch",
                                     "watchedBy": None,
@@ -1807,7 +1811,7 @@ def show_favorites(fav_type, label, favorites=None):
                                 })
                                 break
                         st.session_state["fav_section"] = "📌 İzlenecekler"
-                        st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
+                        st.success(f"✅ {fav.get('title', '')} durumu güncellendi: to_watch")
                         time.sleep(0.5)
                         st.rerun()
                     elif status_select in ["öz", "ss", "öz❤️ss", "n/w"]:
@@ -1821,7 +1825,7 @@ def show_favorites(fav_type, label, favorites=None):
                             "blacklistedAt": None,
                         })
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                            if item.get("id") == fav_id:
+                            if item.get("id", "") == fav_id:
                                 item.update({
                                     "status": "watched",
                                     "watchedBy": None if status_select == "n/w" else status_select,
@@ -1833,7 +1837,7 @@ def show_favorites(fav_type, label, favorites=None):
                                 })
                                 break
                         st.session_state["fav_section"] = "🎬 İzlenenler"
-                        st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
+                        st.success(f"✅ {fav.get('title', '')} durumu güncellendi: watched ({status_select})")
                         time.sleep(0.5)
                         st.rerun()
                     elif status_select == "🖤 BL":
@@ -1846,4 +1850,19 @@ def show_favorites(fav_type, label, favorites=None):
                             "watchedEmoji": None,
                             "cineselectRating": None,
                         })
-                        for item in (st.session_state["favorite_movies"] if fav<truncated__content/>
+                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            if item.get("id", "") == fav_id:
+                                item.update({
+                                    "status": "blacklist",
+                                    "blacklistedBy": "🖤 BL",
+                                    "blacklistedAt": now_str,
+                                    "watchedBy": None,
+                                    "watchedAt": None,
+                                    "watchedEmoji": None,
+                                    "cineselectRating": None,
+                                })
+                                break
+                        st.session_state["fav_section"] = "🖤 Blacklist"
+                        st.success(f"✅ {fav.get('title', '')} durumu güncellendi: blacklist")
+                        time.sleep(0.5)
+                        st.rerun()
