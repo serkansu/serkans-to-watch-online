@@ -1,9 +1,21 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
 
 # Initialize Firebase only once
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_key.json")  # adjust to your secret location
+    firebase_key_env = os.getenv("FIREBASE_KEY")
+    if firebase_key_env:
+        try:
+            cred = credentials.Certificate(json.loads(firebase_key_env))
+        except Exception:
+            # If FIREBASE_KEY is not JSON string but file path
+            cred = credentials.Certificate(firebase_key_env)
+    elif os.path.exists("firebase_key.json"):
+        cred = credentials.Certificate("firebase_key.json")
+    else:
+        raise FileNotFoundError("Firebase key not found. Set FIREBASE_KEY env var or provide firebase_key.json.")
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
