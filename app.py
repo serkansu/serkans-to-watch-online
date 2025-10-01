@@ -1,3 +1,12 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# Initialize Firebase only once
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase_key.json")  # adjust to your secret location
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
 def safe_int(val, default=0):
     try:
         return int(val)
@@ -774,7 +783,6 @@ def push_favorites_to_github():
         else:
             st.success(f"✅ Push OK: {file_path} → {repo_owner}/{repo_name}")
 import streamlit as st
-from firebase_setup import get_firestore
 
 # --- Cached Firestore favorites loader ---
 @st.cache_data(ttl=240)  # Cache Firestore favorites for 240 seconds
@@ -1113,8 +1121,6 @@ def sync_watched_with_firebase(sort_mode="imdb"):
     else:
         st.success(f"✅ Push OK: {file_path} → {repo_owner}/{repo_name}")
 
-# Firestore will be initialized AFTER auth gate below.
-
 # --- Inserted: Page config and auth gate ---
 st.set_page_config(page_title="Serkan’s To‑Watch Online", page_icon="🍿", layout="wide")
 ensure_authenticated()
@@ -1135,7 +1141,6 @@ st.markdown(
 )
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
-db = get_firestore()
 movies, shows = load_favorites()
 st.session_state["favorite_movies"] = movies
 st.session_state["favorite_series"] = shows
