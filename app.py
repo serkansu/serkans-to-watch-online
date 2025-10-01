@@ -774,15 +774,18 @@ st.markdown(
 
 # Firestore'dan verileri çek ve session'a yaz (only after auth)
 db = get_firestore()
-# --- Force skip reload (for local delete)
-if "favorite_movies" not in st.session_state or "favorite_series" not in st.session_state or not st.session_state.get("favorite_movies") or not st.session_state.get("favorite_series"):
-    # sadece ilk defa yüklemede ya da boşken çalıştır
+# Yalnızca ilk yüklemede Firestore'dan getir; yerel silme sonrası force_no_reload varsa eski veri yüklenmesin
+if (
+    "favorite_movies" not in st.session_state
+    or "favorite_series" not in st.session_state
+    or (not st.session_state.get("favorite_movies") and not st.session_state.get("favorite_series"))
+):
     if not st.session_state.get("force_no_reload", False):
         movies, shows = load_favorites()
         st.session_state["favorite_movies"] = movies
         st.session_state["favorite_series"] = shows
     else:
-        # Bir kereye mahsus atla ve flag'i sıfırla
+        # force_no_reload True olduğunda eski veriyi yeniden yükleme
         st.session_state["force_no_reload"] = False
 
 # --- Mobile Home Screen & Favicons ---
