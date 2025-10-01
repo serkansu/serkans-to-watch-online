@@ -1423,40 +1423,37 @@ def show_favorites(fav_type, label, favorites=None):
                 def _norm_title(t):
                     return (t or "").strip().lower()
 
-                def _should_remove(item, target):
-                    # match by id-like keys or title+year fallback
+                target_title = _norm_title(fav.get("title"))
+                target_year = str(fav.get("year"))
+                # fid: from above, may be "unknown_x" or ""
+
+                def _should_remove(item):
                     keys = [item.get("id"), item.get("imdbID"), item.get("tmdb_id"), item.get("key")]
-                    target_keys = [target.get("id"), target.get("imdbID"), target.get("tmdb_id"), target.get("key")]
-                    if any(k and k in target_keys for k in keys):
+                    # If fid is unknown or blank, force title+year match only
+                    if not fid or fid.startswith("unknown"):
+                        if _norm_title(item.get("title")) == target_title and str(item.get("year")) == target_year:
+                            return True
+                        return False
+                    # Normal: try to match by id-like keys first
+                    if fid and fid != "unknown" and fid != "" and fid in keys:
                         return True
-                    if _norm_title(item.get("title")) == _norm_title(target.get("title")) and str(item.get("year")) == str(target.get("year")):
+                    if _norm_title(item.get("title")) == target_title and str(item.get("year")) == target_year:
                         return True
                     return False
 
-                # DEBUG: before removal
-                before_count = len(st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))
-                st.write("🧪 DEBUG Yerelden Sil", {
+                before = len(st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))
+                if fav_type == "movie":
+                    st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if not _should_remove(x)]
+                    after = len(st.session_state.get("favorite_movies", []))
+                else:
+                    st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if not _should_remove(x)]
+                    after = len(st.session_state.get("favorite_series", []))
+
+                st.write("🧪 DEBUG Yerelden Sil zorla", {
                     "fid": fid,
-                    "removed_title": fav.get("title"),
-                    "before_count": before_count,
-                })
-
-                if fav_type == "movie":
-                    st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if not _should_remove(x, fav)]
-                else:
-                    st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if not _should_remove(x, fav)]
-
-                # if still present fallback remove any same title ignoring year
-                if fav_type == "movie":
-                    st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
-                else:
-                    st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
-
-                after_count = len(st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))
-                remaining_titles = [x.get("title") for x in (st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))]
-                st.write("🧪 DEBUG after remove", {
-                    "after_count": after_count,
-                    "remaining_titles": remaining_titles,
+                    "title": fav.get("title"),
+                    "before": before,
+                    "after": after
                 })
 
                 st.session_state["force_no_reload"] = True
