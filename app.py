@@ -1772,13 +1772,13 @@ def show_favorites(fav_type, label, favorites=None):
                     "Watched by",
                     status_options,
                     index=status_options.index(current_status_str) if current_status_str in status_options else 0,
-                    key=f"status_{fav['id']}"
+                    key=f"status_{fav_id}"
                 )
                 from datetime import datetime
                 # --- Hızlı geçiş mantığı: İzlenecekler'de statü değişikliği anında diğer listeye aktar ---
                 # Sadece "to_watch" listesindeyken hızlı geçiş uygula, onay ve yorum isteme
                 if status_select != current_status_str:
-                    doc_ref = db.collection("favorites").document(fav["id"])
+                    doc_ref = db.collection("favorites").document(fav_id)
                     now_str = format_turkish_datetime(datetime.now())
                     # Status transitions: always set all relevant fields for consistency
                     if status_select == "to_watch":
@@ -1860,7 +1860,7 @@ def show_favorites(fav_type, label, favorites=None):
                         time.sleep(0.5)
                         st.rerun()
                 # --- Action buttons: edit, pin, etc. ---
-                if st.button("🔄 IMDb&RT", key=f"refresh_{fav['id']}"):
+                if st.button("🔄 IMDb&RT", key=f"refresh_{fav_id}"):
                     imdb_id = fav.get("imdb")
                     # Eğer imdb_id boşsa TMDb'den al
                     if not imdb_id:
@@ -1871,7 +1871,7 @@ def show_favorites(fav_type, label, favorites=None):
                         st.write("🔍 get_ratings output:", stats)
                         imdb_rating = stats.get("imdb_rating") if stats else None
                         rt_score = stats.get("rt") if stats else None
-                        db.collection("favorites").document(fav["id"]).update({
+                        db.collection("favorites").document(fav_id).update({
                             "imdb": imdb_id,
                             "imdbRating": float(imdb_rating) if imdb_rating is not None else 0.0,
                             "rt": int(rt_score) if rt_score is not None else 0,
@@ -1880,10 +1880,10 @@ def show_favorites(fav_type, label, favorites=None):
                         st.rerun()
                     else:
                         st.error(f"❌ IMDb ID bulunamadı: {fav.get('title')}")
-                if st.button("✏️", key=f"edit_{fav['id']}"):
-                    _safe_set_state(f"edit_mode_{fav['id']}", True)
+                if st.button("✏️", key=f"edit_{fav_id}"):
+                    _safe_set_state(f"edit_mode_{fav_id}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
-                pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav['id']}")
+                pin_now = st.button("📌 Başa tuttur", key=f"pin_{fav_id}")
                 if pin_now:
                     # Find the maximum visible CS among current items and set to min(100, max_val + 1)
                     try:
@@ -1900,17 +1900,17 @@ def show_favorites(fav_type, label, favorites=None):
                         base = 50
                     pin_val = min(100, base + 1)
                     # Update Firestore document immediately
-                    db.collection("favorites").document(fav["id"]).update({"cineselectRating": pin_val})
+                    db.collection("favorites").document(fav_id).update({"cineselectRating": pin_val})
                     # Update session_state as well
                     for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                        if item.get("id") == fav["id"]:
+                        if item.get("id") == fav_id:
                             item["cineselectRating"] = pin_val
                             break
-                    _safe_set_state(f"input_{fav['id']}", pin_val)
+                    _safe_set_state(f"input_{fav_id}", pin_val)
                     st.success(f"📌 CineSelect puanı {pin_val} olarak güncellendi ve başa taşındı!")
                     st.rerun()
-                if st.session_state.get(f"edit_mode_{fav['id']}", False):
-                    i_key = f"input_{fav['id']}"
+                if st.session_state.get(f"edit_mode_{fav_id}", False):
+                    i_key = f"input_{fav_id}"
                     current = _clamp_cs(fav.get("cineselectRating", 50))
                     st.number_input(
                         "🎯 CS:",
@@ -1922,16 +1922,16 @@ def show_favorites(fav_type, label, favorites=None):
                     )
                     cols_edit = st.columns([1,2])
                     with cols_edit[0]:
-                        if st.button("✅ Kaydet", key=f"save_{fav['id']}"):
+                        if st.button("✅ Kaydet", key=f"save_{fav_id}"):
                             new_val = _clamp_cs(st.session_state.get(i_key, current))
-                            db.collection("favorites").document(fav["id"]).update({"cineselectRating": new_val})
+                            db.collection("favorites").document(fav_id).update({"cineselectRating": new_val})
                             # Update session_state as well
                             for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                                if item.get("id") == fav["id"]:
+                                if item.get("id") == fav_id:
                                     item["cineselectRating"] = new_val
                                     break
                             st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
-                            _safe_set_state(f"edit_mode_{fav['id']}", False)
+                            _safe_set_state(f"edit_mode_{fav_id}", False)
                             st.rerun()
                     with cols_edit[1]:
                         st.caption("🔧 İpucu: 'Başa tuttur' butonuna bastıktan sonra 'Kaydet' ile kalıcılaştır.")
