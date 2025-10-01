@@ -51,30 +51,31 @@ def render_comments(fav, section="to_watch"):
         text = c.get("text", "")
         who = c.get("watchedBy", "")
         date = c.get("date", "")
+        fav_id = fav.get('id', '')
         comment_row_cols = st.columns([8, 1, 1])
         with comment_row_cols[0]:
             st.write(f"💬 {text} — ({who}) • {date}")
         with comment_row_cols[1]:
-            edit_mode_key = f"{section}_comment_edit_mode_{fav['id']}_{c_idx}"
-            if st.button("✏️", key=f"{section}_comment_edit_{fav['id']}_{c_idx}"):
+            edit_mode_key = f"{section}_comment_edit_mode_{fav_id}_{c_idx}"
+            if st.button("✏️", key=f"{section}_comment_edit_{fav_id}_{c_idx}"):
                 _safe_set_state(edit_mode_key, True)
                 st.rerun()
         with comment_row_cols[2]:
-            if st.button("🗑️", key=f"{section}_comment_del_{fav['id']}_{c_idx}"):
+            if st.button("🗑️", key=f"{section}_comment_del_{fav_id}_{c_idx}"):
                 new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                db.collection("favorites").document(fav_id).update({"comments": new_comments})
                 fav["comments"] = new_comments
                 # Update session_state
                 for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                    if item.get("id") == fav["id"]:
+                    if item.get("id") == fav_id:
                         item["comments"] = new_comments
                         break
                 st.success("🗑️ Yorum silindi!")
                 time.sleep(0.5)
                 st.rerun()
         if st.session_state.get(edit_mode_key, False):
-            edit_text_key = f"{section}_comment_edit_text_{fav['id']}_{c_idx}"
-            edit_who_key = f"{section}_comment_edit_who_{fav['id']}_{c_idx}"
+            edit_text_key = f"{section}_comment_edit_text_{fav_id}_{c_idx}"
+            edit_who_key = f"{section}_comment_edit_who_{fav_id}_{c_idx}"
             if edit_text_key not in st.session_state:
                 _safe_set_state(edit_text_key, text)
             default_who = (who or "ss")
@@ -95,18 +96,18 @@ def render_comments(fav, section="to_watch"):
                 )
             save_col, cancel_col = st.columns([1, 1])
             with save_col:
-                if st.button("💾 Kaydet", key=f"{section}_comment_save_{fav['id']}_{c_idx}"):
+                if st.button("💾 Kaydet", key=f"{section}_comment_save_{fav_id}_{c_idx}"):
                     now_str = format_turkish_datetime(_dt.now())
                     comments_sorted[c_idx] = {
                         "text": new_text.strip(),
                         "watchedBy": new_who,
                         "date": now_str
                     }
-                    db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                    db.collection("favorites").document(fav_id).update({"comments": comments_sorted})
                     fav["comments"] = comments_sorted
                     # update session_state
                     for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                        if item.get("id") == fav["id"]:
+                        if item.get("id") == fav_id:
                             item["comments"] = comments_sorted
                             break
                     st.success("✏️ Yorum güncellendi!")
@@ -114,13 +115,14 @@ def render_comments(fav, section="to_watch"):
                     time.sleep(0.5)
                     st.rerun()
             with cancel_col:
-                if st.button("❌ İptal", key=f"{section}_comment_cancel_{fav['id']}_{c_idx}"):
+                if st.button("❌ İptal", key=f"{section}_comment_cancel_{fav_id}_{c_idx}"):
                     _safe_set_state(edit_mode_key, False)
                     st.rerun()
     # Add comment expander
     with st.expander("💬 Yorum Ekle"):
-        comment_key = f"{section}_comment_add_{fav['id']}"
-        comment_wb_key = f"{section}_comment_add_wb_{fav['id']}"
+        fav_id = fav.get('id', '')
+        comment_key = f"{section}_comment_add_{fav_id}"
+        comment_wb_key = f"{section}_comment_add_wb_{fav_id}"
         if comment_key not in st.session_state:
             _safe_set_state(comment_key, "")
         comment_text = st.text_area(
@@ -137,7 +139,7 @@ def render_comments(fav, section="to_watch"):
             key=comment_wb_key,
             label_visibility="visible"
         )
-        comment_btn_key = f"{section}_comment_add_btn_{fav['id']}"
+        comment_btn_key = f"{section}_comment_add_btn_{fav_id}"
         comments = fav.get("comments", [])
         new_comments = list(comments) if comments else []
         if st.button("💬 Comment yap", key=comment_btn_key):
@@ -151,11 +153,11 @@ def render_comments(fav, section="to_watch"):
                     "date": now_str,
                 }
                 new_comments.append(new_comment)
-                db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                db.collection("favorites").document(fav_id).update({"comments": new_comments})
                 fav["comments"] = new_comments
                 for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                              else st.session_state["favorite_series"]):
-                    if item.get("id") == fav["id"]:
+                    if item.get("id") == fav_id:
                         item["comments"] = new_comments
                         break
                 _safe_set_state(comment_key, "")
@@ -300,6 +302,7 @@ if query:
                 else:
                     for item in selected_items:
                         db.collection("favorites").document(item["id"]).set({
+                            "id": item["id"],
                             "title": item["title"],
                             "year": item["year"],
                             "poster": item["poster"],
@@ -370,6 +373,7 @@ if query:
                 else:
                     for item in selected_items:
                         db.collection("favorites").document(item["id"]).set({
+                            "id": item["id"],
                             "title": item["title"],
                             "year": item["year"],
                             "poster": item["poster"],
@@ -1604,6 +1608,7 @@ def show_favorites(fav_type, label, favorites=None):
             _rt_val_num = 0
         rt_display = f"{_rt_val_num}%" if _rt_val_num > 0 else "N/A"
         cols = st.columns([1, 5, 1])
+        fav_id = fav.get('id', '')
         with cols[0]:
             if show_posters and fav.get("poster"):
                 imdb_id_link = str(
@@ -1632,26 +1637,26 @@ def show_favorites(fav_type, label, favorites=None):
                 with comment_row_cols[0]:
                     st.write(f"💬 {text} — ({who}) • {date}")
                 with comment_row_cols[1]:
-                    edit_mode_key = f"to_watch_comment_edit_mode_{fav['id']}_{c_idx}"
-                    if st.button("✏️", key=f"to_watch_comment_edit_{fav['id']}_{c_idx}"):
+                    edit_mode_key = f"to_watch_comment_edit_mode_{fav_id}_{c_idx}"
+                    if st.button("✏️", key=f"to_watch_comment_edit_{fav_id}_{c_idx}"):
                         _safe_set_state(edit_mode_key, True)
                         st.rerun()
                 with comment_row_cols[2]:
-                    if st.button("🗑️", key=f"to_watch_comment_del_{fav['id']}_{c_idx}"):
+                    if st.button("🗑️", key=f"to_watch_comment_del_{fav_id}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
-                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        db.collection("favorites").document(fav_id).update({"comments": new_comments})
                         fav["comments"] = new_comments
                         # update session_state immediately after Firestore update (mirror İzlenenler)
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                            if item.get("id") == fav["id"]:
+                            if item.get("id") == fav_id:
                                 item["comments"] = new_comments
                                 break
                         st.success("🗑️ Yorum silindi!")
                         st.rerun()
                 # Inline edit UI if in edit mode
                 if st.session_state.get(edit_mode_key, False):
-                    edit_text_key = f"to_watch_comment_edit_text_{fav['id']}_{c_idx}"
-                    edit_who_key = f"to_watch_comment_edit_who_{fav['id']}_{c_idx}"
+                    edit_text_key = f"to_watch_comment_edit_text_{fav_id}_{c_idx}"
+                    edit_who_key = f"to_watch_comment_edit_who_{fav_id}_{c_idx}"
                     if edit_text_key not in st.session_state:
                         _safe_set_state(edit_text_key, text)
                     default_who = (who or "ss")
@@ -1672,31 +1677,31 @@ def show_favorites(fav_type, label, favorites=None):
                         )
                     save_col, cancel_col = st.columns([1, 1])
                     with save_col:
-                        if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav['id']}_{c_idx}"):
+                        if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fav_id}_{c_idx}"):
                             now_str = format_turkish_datetime(_dt.now())
                             comments_sorted[c_idx] = {
                                 "text": new_text.strip(),
                                 "watchedBy": new_who,
                                 "date": now_str
                             }
-                            db.collection("favorites").document(fav["id"]).update({"comments": comments_sorted})
+                            db.collection("favorites").document(fav_id).update({"comments": comments_sorted})
                             fav["comments"] = comments_sorted
                             # update session_state immediately after Firestore update (mirror İzlenenler)
                             for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
-                                if item.get("id") == fav["id"]:
+                                if item.get("id") == fav_id:
                                     item["comments"] = comments_sorted
                                     break
                             st.success("✏️ Yorum güncellendi!")
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
                     with cancel_col:
-                        if st.button("❌ İptal", key=f"to_watch_comment_cancel_{fav['id']}_{c_idx}"):
+                        if st.button("❌ İptal", key=f"to_watch_comment_cancel_{fav_id}_{c_idx}"):
                             _safe_set_state(edit_mode_key, False)
                             st.rerun()
             # --- Yorum Ekle expander, İzlenenler-style, immediately after comments ---
             with st.expander("💬 Yorum Ekle"):
-                comment_key = f"to_watch_comment_add_{fav['id']}"
-                comment_wb_key = f"to_watch_comment_add_wb_{fav['id']}"
+                comment_key = f"to_watch_comment_add_{fav_id}"
+                comment_wb_key = f"to_watch_comment_add_wb_{fav_id}"
                 if comment_key not in st.session_state:
                     _safe_set_state(comment_key, "")
                 comment_text = st.text_area(
@@ -1713,7 +1718,7 @@ def show_favorites(fav_type, label, favorites=None):
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
-                comment_btn_key = f"to_watch_comment_add_btn_{fav['id']}"
+                comment_btn_key = f"to_watch_comment_add_btn_{fav_id}"
                 comments = fav.get("comments", [])
                 new_comments = list(comments) if comments else []
                 if st.button("💬 Comment yap", key=comment_btn_key):
@@ -1728,13 +1733,13 @@ def show_favorites(fav_type, label, favorites=None):
                         }
                         new_comments.append(new_comment)
                         # 1. Firestore update
-                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        db.collection("favorites").document(fav_id).update({"comments": new_comments})
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
                         # 3. session_state güncellemesi
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                                      else st.session_state["favorite_series"]):
-                            if item.get("id") == fav["id"]:
+                            if item.get("id") == fav_id:
                                 item["comments"] = new_comments
                                 break
                         # 4. _safe_set_state(comment_key, "")
