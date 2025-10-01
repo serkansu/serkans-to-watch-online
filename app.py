@@ -280,17 +280,25 @@ if query:
                 with cols[0]:
                     if poster_path:
                         poster_url = f"https://image.tmdb.org/t/p/w200{poster_path}"
-                        st.image(poster_url, width=100)
-                with cols[1]:
-                    if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
-                        selected_items.append({
-                            "id": str(c["id"]),
-                            "title": title,
-                            "year": year,
-                            "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
-                            "imdb": None,
-                            "type": "movie" if media_type == "movie" else "show"
-                        })
+                        imdb_id = tmdb_imdb_id(c["id"], media_type=media_type)
+                        if imdb_id:
+                            st.markdown(
+                                f'<a href="https://www.imdb.com/title/{imdb_id}/" target="_blank">'
+                                f'<img src="{poster_url}" width="100"/></a>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.image(poster_url, width=100)
+                                    with cols[1]:
+                                        if st.checkbox(f"{title} ({year})", key=f"chk_{c['id']}"):
+                                            selected_items.append({
+                                                "id": str(c["id"]),
+                                                "title": title,
+                                                "year": year,
+                                                "poster": f"https://image.tmdb.org/t/p/w200{poster_path}" if poster_path else None,
+                                                "imdb": None,
+                                                "type": "movie" if media_type == "movie" else "show"
+                                            })
 
             # Bulk add button is always visible; validate selection on click
             if st.button("➕ Hepsini Favorilere Ekle", key="add_people_bulk"):
