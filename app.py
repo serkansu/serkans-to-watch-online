@@ -840,7 +840,27 @@ with tcol3:
 with tcol4:
     if st.button("📊 Favori Sayıları", key="toolbar_counts"):
         show_favorites_count()
-# --- /Quick Toolbar ---
+
+# --- Geçici Temizleme Butonu: Firestore'da olmayanları temizle ---
+# Bu butonu Quick Toolbar'ın hemen altına koyduk.
+if st.button("🧹 Firestore'da olmayanları temizle (geçici)"):
+    cleaned_movies = []
+    for f in st.session_state.get("favorite_movies", []):
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
+        if fid and db.collection("favorites").document(fid).get().exists:
+            cleaned_movies.append(f)
+    cleaned_series = []
+    for f in st.session_state.get("favorite_series", []):
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
+        if fid and db.collection("favorites").document(fid).get().exists:
+            cleaned_series.append(f)
+
+    st.session_state["favorite_movies"] = cleaned_movies
+    st.session_state["favorite_series"] = cleaned_series
+
+    st.success("🧹 Firestore’da olmayan tüm öğeler listeden temizlendi!")
+    st.rerun()
+# --- /Geçici Temizleme Butonu ---
 
 
 #
