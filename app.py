@@ -782,6 +782,10 @@ if (
 ):
     if not st.session_state.get("force_no_reload", False):
         movies, shows = load_favorites()
+        # Daha önce silinmiş başlıkları tekrar ekleme
+        if "deleted_titles" in st.session_state:
+            movies = [m for m in movies if _norm_title(m.get("title")) not in st.session_state["deleted_titles"]]
+            shows = [s for s in shows if _norm_title(s.get("title")) not in st.session_state["deleted_titles"]]
         st.session_state["favorite_movies"] = movies
         st.session_state["favorite_series"] = shows
     else:
@@ -1451,6 +1455,11 @@ def show_favorites(fav_type, label, favorites=None):
                 else:
                     st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if not _should_remove(x)]
                     after = len(st.session_state.get("favorite_series", []))
+
+                # Silinen başlığı kaydet (yeniden yüklenmesin)
+                if "deleted_titles" not in st.session_state:
+                    st.session_state["deleted_titles"] = set()
+                st.session_state["deleted_titles"].add(_norm_title(fav.get("title")))
 
                 st.write("🧪 DEBUG Yerelden Sil zorla", {
                     "fid": fid,
