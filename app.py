@@ -1292,8 +1292,15 @@ def show_favorites(fav_type, label, favorites=None):
             with st.expander("💬 Yorum Ekle"):
                 st.write("DEBUG fav keys:", list(fav.keys()))
                 st.write("DEBUG fav data:", fav)
-                comment_key = f"to_watch_comment_add_{fav['id']}"
-                comment_wb_key = f"to_watch_comment_add_wb_{fav['id']}"
+                # Güvenli id seçimi: id, imdbID, tmdb_id, key
+                fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
+                st.write("DEBUG id chosen:", fid)
+                if fid is None:
+                    st.warning("⚠️ Bu favori için 'id' bulunamadı. Varsayılan 'unknown' kullanılacak.")
+                    fid = "unknown"
+
+                comment_key = f"to_watch_comment_add_{fid}"
+                comment_wb_key = f"to_watch_comment_add_wb_{fid}"
                 if comment_key not in st.session_state:
                     _safe_set_state(comment_key, "")
                 comment_text = st.text_area(
@@ -1310,7 +1317,7 @@ def show_favorites(fav_type, label, favorites=None):
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
-                comment_btn_key = f"to_watch_comment_add_btn_{fav['id']}"
+                comment_btn_key = f"to_watch_comment_add_btn_{fid}"
                 comments = fav.get("comments", [])
                 new_comments = list(comments) if comments else []
                 if st.button("💬 Comment yap", key=comment_btn_key):
@@ -1325,13 +1332,13 @@ def show_favorites(fav_type, label, favorites=None):
                         }
                         new_comments.append(new_comment)
                         # 1. Firestore update
-                        db.collection("favorites").document(fav["id"]).update({"comments": new_comments})
+                        db.collection("favorites").document(fav.get("id", fid)).update({"comments": new_comments})
                         # 2. Update fav["comments"]
                         fav["comments"] = new_comments
                         # 3. session_state güncellemesi
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
                                      else st.session_state["favorite_series"]):
-                            if item.get("id") == fav["id"]:
+                            if item.get("id") == fav.get("id", fid):
                                 item["comments"] = new_comments
                                 break
                         # 4. _safe_set_state(comment_key, "")
