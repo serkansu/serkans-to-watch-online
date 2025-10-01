@@ -1357,15 +1357,26 @@ def show_favorites(fav_type, label, favorites=None):
                     st.warning("⚠️ Firestore’da kaydı bulunamadığı için silinemedi.")
             # 🗑️ Yerelden Silme Butonu (Firestore kaydı olmayanlar için)
             if st.button("🗑️ Yerelden Sil", key=f"delete_local_{fid}"):
+                def _norm_title(t):
+                    return (t or "").strip().lower()
+
                 if fav_type == "movie":
                     st.session_state["favorite_movies"] = [
                         f for f in st.session_state["favorite_movies"]
-                        if (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) != (fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key"))
+                        if not (
+                            (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) == fid
+                            or (_norm_title(f.get("title")) == _norm_title(fav.get("title"))
+                                and str(f.get("year")) == str(fav.get("year")))
+                        )
                     ]
                 else:
                     st.session_state["favorite_series"] = [
                         f for f in st.session_state["favorite_series"]
-                        if (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) != (fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key"))
+                        if not (
+                            (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) == fid
+                            or (_norm_title(f.get("title")) == _norm_title(fav.get("title"))
+                                and str(f.get("year")) == str(fav.get("year")))
+                        )
                     ]
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (Firestore kaydı yoktu).")
                 st.rerun()
