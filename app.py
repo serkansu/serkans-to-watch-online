@@ -1347,6 +1347,14 @@ def show_favorites(fav_type, label, favorites=None):
                         # 7. st.rerun()
                         st.rerun()
         with cols[2]:
+            # 🗑️ Silme Butonu
+            if st.button("🗑️ Sil", key=f"delete_{fid}"):
+                if fav.get("id"):
+                    db.collection("favorites").document(fav["id"]).delete()
+                    st.success(f"🗑️ {fav.get('title','Film')} Firestore’dan silindi!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Firestore’da kaydı bulunamadığı için silinemedi.")
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
