@@ -871,16 +871,16 @@ if st.button("🧹 Firestore'da olmayanları temizle (geçici)"):
 if st.button("☁️ Eksik Firestore Kayıtlarını Ekle"):
     added = 0
     for f in st.session_state.get("favorite_movies", []):
-        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
-        if fid and not db.collection("favorites").document(fid).get().exists:
-            db.collection("favorites").document(fid).set(f)
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key") or f.get("title")
+        if fid:
+            db.collection("favorites").document(str(fid)).set(f)
             added += 1
     for f in st.session_state.get("favorite_series", []):
-        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
-        if fid and not db.collection("favorites").document(fid).get().exists:
-            db.collection("favorites").document(fid).set(f)
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key") or f.get("title")
+        if fid:
+            db.collection("favorites").document(str(fid)).set(f)
             added += 1
-    st.success(f"☁️ Eksik olan {added} film/dizi Firestore’a eklendi!")
+    st.success(f"{added} kayıt Firestore'a zorla eklendi")
     st.rerun()
 
 
