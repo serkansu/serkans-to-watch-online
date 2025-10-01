@@ -1360,7 +1360,7 @@ _shows_idx = {}
 for pos, f in enumerate(_shows_sorted, start=1):
     _key = f"{_norm_title(f.get('title'))}::{str(f.get('year') or '')}"
     _shows_idx[_key] = (f, pos)
-def _add_item_to_favorites(item, media_key, cs_value=100):
+def add_to_favorites(item, media_key, cs_value=100):
     """Add one item to Firestore favorites with IMDb/RT enrichment and given CineSelect score."""
     from omdb import get_ratings, fetch_ratings  # ensure fetch_ratings is available
         # 🔥 Daha önce eklenmiş mi kontrolü
@@ -1534,7 +1534,7 @@ if query:
             if st.button("Add to Favorites", key=f"btn_{item_id}"):
                 media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
                 # Use the manual per-item CS value for single add
-                _add_item_to_favorites(item, media_key, cs_value=manual_val)
+                add_to_favorites(item, media_key, cs_value=manual_val)
                 st.success(f"✅ {item_title} added to favorites!")
                 st.session_state.clear_search = True
                 st.toast("Refreshing…", icon="🔄")
@@ -1544,7 +1544,7 @@ if query:
         # --- Bulk add for selected items (default CS=100) ---
         if selected_items and st.button("➕ Add Selected to Favorites", key="btn_add_selected_bulk"):
             for _it, _mkey in selected_items:
-                _add_item_to_favorites(_it, _mkey, cs_value=100)
+                add_to_favorites(_it, _mkey, cs_value=100)
             st.success(f"✅ {len(selected_items)} öğe favorilere eklendi (CS=100).")
             st.toast("Refreshing…", icon="🔄")
             # 🔥 Yeni eklenen öğelerin ekranda görünmesi için cache temizle ve tekrar yükle
@@ -1585,6 +1585,7 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
+    st.write(f"🔍 Debug: Firestore'dan {len(favorites) if favorites else 0} kayıt çekildi. | Tip: {fav_type}")
     # Firestore’dan sadece type’a göre getir
     docs = db.collection("favorites").where("type", "==", fav_type).stream()
     favorites = [doc.to_dict() for doc in docs]
