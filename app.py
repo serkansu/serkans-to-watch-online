@@ -1433,6 +1433,14 @@ def show_favorites(fav_type, label, favorites=None):
                         return True
                     return False
 
+                # DEBUG: before removal
+                before_count = len(st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))
+                st.write("🧪 DEBUG Yerelden Sil", {
+                    "fid": fid,
+                    "removed_title": fav.get("title"),
+                    "before_count": before_count,
+                })
+
                 if fav_type == "movie":
                     st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if not _should_remove(x, fav)]
                 else:
@@ -1443,6 +1451,13 @@ def show_favorites(fav_type, label, favorites=None):
                     st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
                 else:
                     st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
+
+                after_count = len(st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))
+                remaining_titles = [x.get("title") for x in (st.session_state.get("favorite_movies", []) if fav_type == "movie" else st.session_state.get("favorite_series", []))]
+                st.write("🧪 DEBUG after remove", {
+                    "after_count": after_count,
+                    "remaining_titles": remaining_titles,
+                })
 
                 st.session_state["force_no_reload"] = True
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (zorla).")
