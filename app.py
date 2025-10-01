@@ -1418,31 +1418,34 @@ def show_favorites(fav_type, label, favorites=None):
                     st.rerun()
                 else:
                     st.warning("⚠️ Firestore’da kaydı bulunamadığı için silinemedi.")
-            # 🗑️ Yerelden Silme Butonu (Firestore kaydı olmayanlar için)
+            # 🗑️ Yerelden Silme Butonu (Firestore kaydı olmayanlar için) - STRONGER fallback
             if st.button("🗑️ Yerelden Sil", key=f"delete_local_{fid}"):
                 def _norm_title(t):
                     return (t or "").strip().lower()
 
+                def _should_remove(item, target):
+                    # match by id-like keys or title+year fallback
+                    keys = [item.get("id"), item.get("imdbID"), item.get("tmdb_id"), item.get("key")]
+                    target_keys = [target.get("id"), target.get("imdbID"), target.get("tmdb_id"), target.get("key")]
+                    if any(k and k in target_keys for k in keys):
+                        return True
+                    if _norm_title(item.get("title")) == _norm_title(target.get("title")) and str(item.get("year")) == str(target.get("year")):
+                        return True
+                    return False
+
                 if fav_type == "movie":
-                    st.session_state["favorite_movies"] = [
-                        f for f in st.session_state["favorite_movies"]
-                        if not (
-                            (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) == fid
-                            or (_norm_title(f.get("title")) == _norm_title(fav.get("title"))
-                                and str(f.get("year")) == str(fav.get("year")))
-                        )
-                    ]
+                    st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if not _should_remove(x, fav)]
                 else:
-                    st.session_state["favorite_series"] = [
-                        f for f in st.session_state["favorite_series"]
-                        if not (
-                            (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) == fid
-                            or (_norm_title(f.get("title")) == _norm_title(fav.get("title"))
-                                and str(f.get("year")) == str(fav.get("year")))
-                        )
-                    ]
+                    st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if not _should_remove(x, fav)]
+
+                # if still present fallback remove any same title ignoring year
+                if fav_type == "movie":
+                    st.session_state["favorite_movies"] = [x for x in st.session_state["favorite_movies"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
+                else:
+                    st.session_state["favorite_series"] = [x for x in st.session_state["favorite_series"] if _norm_title(x.get("title")) != _norm_title(fav.get("title"))]
+
                 st.session_state["force_no_reload"] = True
-                st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (Firestore kaydı yoktu).")
+                st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (zorla).")
                 st.rerun()
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
