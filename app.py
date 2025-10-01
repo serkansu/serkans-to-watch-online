@@ -1358,9 +1358,15 @@ def show_favorites(fav_type, label, favorites=None):
             # 🗑️ Yerelden Silme Butonu (Firestore kaydı olmayanlar için)
             if st.button("🗑️ Yerelden Sil", key=f"delete_local_{fid}"):
                 if fav_type == "movie":
-                    st.session_state["favorite_movies"] = [f for f in st.session_state["favorite_movies"] if f != fav]
+                    st.session_state["favorite_movies"] = [
+                        f for f in st.session_state["favorite_movies"]
+                        if (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) != (fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key"))
+                    ]
                 else:
-                    st.session_state["favorite_series"] = [f for f in st.session_state["favorite_series"] if f != fav]
+                    st.session_state["favorite_series"] = [
+                        f for f in st.session_state["favorite_series"]
+                        if (f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")) != (fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key"))
+                    ]
                 st.success(f"🗑️ {fav.get('title','Film')} listeden kaldırıldı (Firestore kaydı yoktu).")
                 st.rerun()
             with st.expander("✨ Options"):
