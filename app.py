@@ -867,6 +867,22 @@ if st.button("🧹 Firestore'da olmayanları temizle (geçici)"):
     st.rerun()
 # --- /Geçici Temizleme Butonu ---
 
+# ☁️ Eksik Firestore kayıtlarını ekleme butonu
+if st.button("☁️ Eksik Firestore Kayıtlarını Ekle"):
+    added = 0
+    for f in st.session_state.get("favorite_movies", []):
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
+        if fid and not db.collection("favorites").document(fid).get().exists:
+            db.collection("favorites").document(fid).set(f)
+            added += 1
+    for f in st.session_state.get("favorite_series", []):
+        fid = f.get("id") or f.get("imdbID") or f.get("tmdb_id") or f.get("key")
+        if fid and not db.collection("favorites").document(fid).get().exists:
+            db.collection("favorites").document(fid).set(f)
+            added += 1
+    st.success(f"☁️ Eksik olan {added} film/dizi Firestore’a eklendi!")
+    st.rerun()
+
 
 #
 # --- Options Expander (All action buttons grouped) ---
