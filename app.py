@@ -1363,7 +1363,7 @@ for pos, f in enumerate(_shows_sorted, start=1):
 def add_to_favorites(item, media_key, cs_value=100):
     """Add one item to Firestore favorites with IMDb/RT enrichment and given CineSelect score."""
     from omdb import get_ratings, fetch_ratings  # ensure fetch_ratings is available
-        # 🔥 Daha önce eklenmiş mi kontrolü
+    # 🔥 Daha önce eklenmiş mi kontrolü
     item_id = item.get("id", "")
     item_title = item.get("title", "")
     item_year = item.get("year", "")
@@ -1422,6 +1422,8 @@ def add_to_favorites(item, media_key, cs_value=100):
         "addedAt": _added_at,
     }
     _doc_ref.set(payload)
+    fav_doc = payload
+    st.write("✅ Firestore'a kaydedilen doküman:", fav_doc)
 
     # 4) Ensure seed_ratings.csv has this row
     append_seed_rating(
@@ -1585,10 +1587,11 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
-    st.write(f"🔍 Debug: Firestore'dan {len(favorites) if favorites else 0} kayıt çekildi. | Tip: {fav_type}")
-    # Firestore’dan sadece type’a göre getir
-    docs = db.collection("favorites").where("type", "==", fav_type).stream()
-    favorites = [doc.to_dict() for doc in docs]
+    # Use session_state data instead of fetching from Firestore
+    if fav_type == "movie":
+        favorites = st.session_state.get("favorite_movies", [])
+    else:
+        favorites = st.session_state.get("favorite_series", [])
 
     st.markdown(f"### 📁 {label}")
     if not favorites:
