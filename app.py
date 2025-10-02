@@ -941,10 +941,15 @@ if query:
     if not results:
         st.error("❌ No results found.")
     else:
+        # Sıralama: yıl'a göre yeni→eski
+        results.sort(key=lambda x: x.get("year", 0), reverse=True)
+
+        # Seçimler için checkbox listesi
+        selections = []
         for idx, item in enumerate(results):
             st.divider()
+            # Posterleri tıklanabilir hale getir
             if item.get("poster") and show_posters:
-                # Prefer an actual IMDb ID (e.g., "tt0133093"); fall back across common key variants
                 imdb_id_link = str(
                     item.get("imdb")
                     or item.get("imdb_id")
@@ -952,14 +957,17 @@ if query:
                     or ""
                 ).strip()
                 poster_url = item["poster"]
-                if imdb_id_link.startswith("tt"):
-                    st.markdown(
-                        f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank" rel="noopener">'
-                        f'<img src="{poster_url}" width="180"/></a>',
-                        unsafe_allow_html=True,
-                    )
+                imdb_url = f"https://www.imdb.com/title/{imdb_id_link}/" if imdb_id_link.startswith("tt") else item.get("imdb_url", "")
+                if imdb_url:
+                    st.markdown(f"[![{item['title']}]({poster_url})]({imdb_url})", unsafe_allow_html=True)
                 else:
                     st.image(poster_url, width=180)
+
+            # Checkbox ile seçim (tekli ekleme butonunu kaldırdık)
+            checkbox_label = f"{item['title']} ({item.get('year','?')})"
+            selected = st.checkbox(checkbox_label, key=f"select_{item.get('id',item['title'])}")
+            if selected:
+                selections.append(item)
 
             st.markdown(f"**{idx+1}. {item['title']} ({item.get('year', '—')})**")
 
@@ -997,129 +1005,72 @@ if query:
             rt_display = f"{int(rt_val)}%" if isinstance(rt_val, (int, float)) and rt_val > 0 else "N/A"
             st.markdown(f"⭐ IMDb: {imdb_display} &nbsp;&nbsp; 🍅 RT: {rt_display}", unsafe_allow_html=True)
 
-            manual_key = f"manual_{item['id']}"
-            manual_val = st.number_input(
-                "🎯 CineSelect Rating:",
-                min_value=1,
-                max_value=100,
-                value=st.session_state.get(manual_key, 50),
-                step=1,
-                key=manual_key
-            )
+            # --- Tekli ekleme butonu kaldırıldı ---
+            # --- CineSelect manual input kaldırıldı ---
 
-            if st.button("Add to Favorites", key=f"btn_{item['id']}"):
-                media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
-
-                from omdb import get_ratings, fetch_ratings  # ÜSTE ekli olsun
-
-                # 1) IMDb ID garanti altına al
-                imdb_id = (item.get("imdb") or "").strip()
-                if not imdb_id or imdb_id == "tt0000000":
-                    imdb_id = get_imdb_id_from_tmdb(
-                        title=item["title"],
-                        year=item.get("year"),
-                        is_series=(media_key == "show"),
-                )
-
-                # 2) IMDb/RT puanlarını getir (ÖNCE yerel CSV, yoksa OMDb-ID, o da yoksa Title/Year)
-                stats = {}
-                raw_id = {}
-                raw_title = {}
-                source = None
-
-                # a) yerel CSV
-                seed_hit = read_seed_rating(imdb_id)
-                if seed_hit and (seed_hit.get("imdb_rating") or seed_hit.get("rt")):
-                    stats = {"imdb_rating": seed_hit.get("imdb_rating"), "rt": seed_hit.get("rt")}
-                    source = "CSV"
-
-                # b) CSV yoksa/eksikse OMDb by ID
-                if not source:
-                    if imdb_id:
-                        stats = get_ratings(imdb_id) or {}
-                        raw_id = (stats.get("raw") or {})
-                        source = "CSV/OMDb-ID" if raw_id else None  # get_ratings CSV'den dönerse raw boş kalabilir
-
-                # c) hâlâ boşsa OMDb by Title/Year
-                if not stats or ((stats.get("imdb_rating") in (None, 0, "N/A")) and (stats.get("rt") in (None, 0, "N/A"))):
-                    ir, rt, raw_title = fetch_ratings(item["title"], item.get("year"))
-                    stats = {"imdb_rating": ir, "rt": rt}
-                    if not source:
-                        source = "OMDb-title"
-
-                imdb_rating = float(stats.get("imdb_rating") or 0.0)
-                rt_score    = int(stats.get("rt") or 0)
-
-                # 🔎 DEBUG: Kaynak ve ham yanıtlar
-                st.write(f"🔍 Source: {source or '—'} | 🆔 IMDb ID: {imdb_id or '—'} | ⭐ IMDb: {imdb_rating} | 🍅 RT: {rt_score}")
-
-                # Extra, user-visible diagnostics
-                error_msg = None
-                if isinstance(raw_id, dict):
-                    error_msg = raw_id.get("Error")
-                if not error_msg and isinstance(raw_title, dict):
-                    error_msg = raw_title.get("Error")
-
-                if error_msg:
-                    st.error(f"OMDb error: {error_msg}. Check OMDB_API_KEY.", icon="🚨")
-                elif source == "CSV":
-                    st.info("Source: seed_ratings.csv (cached)", icon="📂")
-                elif source == "CSV/OMDb-ID":
-                    st.info(f"Source: OMDb by IMDb ID ({imdb_id})", icon="🔎")
-                else:
-                    st.info(f"Source: OMDb by Title/Year ({item['title']} {item.get('year')})", icon="🔎")
-
-                if raw_id:
-                    import json as _json
-                    st.caption("OMDb by ID (raw JSON)")
-                    st.code(_json.dumps(raw_id, ensure_ascii=False, indent=2))
-                if raw_title:
-                    import json as _json
-                    st.caption("OMDb by title (raw JSON)")
-                    st.code(_json.dumps(raw_title, ensure_ascii=False, indent=2))
-                # 3) Firestore'a yaz (varsa addedAt'i koru, yoksa ilk kez ekleniyorsa server timestamp ver)
-                _doc_ref = db.collection("favorites").document(item["id"])
-                _prev = _doc_ref.get()
-                _prev_data = _prev.to_dict() if _prev.exists else {}
-                _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
-
-                payload = {
-                    "id": item["id"],
-                    "title": item["title"],
-                    "year": item.get("year"),
-                    "imdb": imdb_id,
-                    "poster": item.get("poster"),
-                    "imdbRating": imdb_rating,                 # ✅ eklendi
-                    "rt": rt_score,                            # ✅ CSV/OMDb’den gelen kesin değer
-                    "cineselectRating": manual_val,
-                    "type": media_key,
-                    "addedAt": _added_at,
-                }
-                _doc_ref.set(payload)
-
-                if _prev.exists:
-                    # Bilgilendirme: Bu TMDB id zaten listedeydi; alanlar güncellendi.
-                    try:
-                        _when = _prev_data.get("addedAt")
-                        _when_txt = format_turkish_datetime(_when) if hasattr(_when, "strftime") else str(_when)
-                    except Exception:
-                        _when_txt = "—"
-                    st.info(f"ℹ️ Bu öğe zaten listendeydi (ilk eklenme: {_when_txt}); bilgiler güncellendi.", icon="ℹ️")
-                # 4) seed_ratings.csv'ye (yoksa) ekle
-                append_seed_rating(
-                    imdb_id=imdb_id,
+        # Toplu ekleme butonu
+        def add_to_favorites(item, cs_score=101):
+            # media_key: Movie/TV Show ayrımı
+            media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
+            from omdb import get_ratings, fetch_ratings
+            imdb_id = (item.get("imdb") or "").strip()
+            if not imdb_id or imdb_id == "tt0000000":
+                imdb_id = get_imdb_id_from_tmdb(
                     title=item["title"],
                     year=item.get("year"),
-                    imdb_rating=imdb_rating,
-                    rt_score=rt_score,
+                    is_series=(media_key == "show"),
                 )
-                st.success(f"✅ {item['title']} added to favorites!")
-                # clear search on next run to avoid "modified after instantiation" error
-                st.session_state.clear_search = True
-                # Let the user see the diagnostics before refresh
-                st.toast("Refreshing…", icon="🔄")
-                time.sleep(1.2)
-                st.rerun()
+            # IMDb/RT puanlarını getir (ÖNCE yerel CSV, yoksa OMDb-ID, o da yoksa Title/Year)
+            stats = {}
+            raw_id = {}
+            raw_title = {}
+            source = None
+            seed_hit = read_seed_rating(imdb_id)
+            if seed_hit and (seed_hit.get("imdb_rating") or seed_hit.get("rt")):
+                stats = {"imdb_rating": seed_hit.get("imdb_rating"), "rt": seed_hit.get("rt")}
+                source = "CSV"
+            if not source:
+                if imdb_id:
+                    stats = get_ratings(imdb_id) or {}
+                    raw_id = (stats.get("raw") or {})
+                    source = "CSV/OMDb-ID" if raw_id else None
+            if not stats or ((stats.get("imdb_rating") in (None, 0, "N/A")) and (stats.get("rt") in (None, 0, "N/A"))):
+                ir, rt, raw_title = fetch_ratings(item["title"], item.get("year"))
+                stats = {"imdb_rating": ir, "rt": rt}
+                if not source:
+                    source = "OMDb-title"
+            imdb_rating = float(stats.get("imdb_rating") or 0.0)
+            rt_score    = int(stats.get("rt") or 0)
+            _doc_ref = db.collection("favorites").document(item["id"])
+            _prev = _doc_ref.get()
+            _prev_data = _prev.to_dict() if _prev.exists else {}
+            _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
+            payload = {
+                "id": item["id"],
+                "title": item["title"],
+                "year": item.get("year"),
+                "imdb": imdb_id,
+                "poster": item.get("poster"),
+                "imdbRating": imdb_rating,
+                "rt": rt_score,
+                "cineselectRating": cs_score,
+                "type": media_key,
+                "addedAt": _added_at,
+            }
+            _doc_ref.set(payload)
+            append_seed_rating(
+                imdb_id=imdb_id,
+                title=item["title"],
+                year=item.get("year"),
+                imdb_rating=imdb_rating,
+                rt_score=rt_score,
+            )
+
+        if selections and st.button("➕ Add Selected to Favorites"):
+            for item in selections:
+                add_to_favorites(item, cs_score=101)
+            st.success(f"{len(selections)} öğe favorilere eklendi.")
+            st.experimental_rerun()
 
 st.divider()
 st.subheader("🎬 Film / Dizi Listesi")
