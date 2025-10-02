@@ -431,8 +431,10 @@ def _resolve_tmdb_id(imdb_id: str | None, title: str | None, year: int | None, m
     except Exception:
         return ""
 
-def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, title: str | None = None, year: int | None = None) -> dict:
-    """Gather director(s), writer(s)/creator(s), cast and genres using OMDb (by IMDb ID if available) + TMDb by TMDb id."""
+def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, title: str | None = None, year: int | None = None, max_cast: int | None = None) -> dict:
+    """Gather director(s), writer(s)/creator(s), cast and genres using OMDb (by IMDb ID if available) + TMDb by TMDb id.
+    Optional `max_cast` limits how many cast members are kept (None = keep all).
+    """
     tmdb_key = os.getenv("TMDB_API_KEY")
     omdb_key = os.getenv("OMDB_API_KEY")
 
@@ -476,8 +478,11 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
         crew = cred.get("crew", []) or []
         directors += [c.get("name", "").strip() for c in crew if (c.get("department") == "Directing" or c.get("job") == "Director")]
         writers   += [c.get("name", "").strip() for c in crew if (c.get("department") == "Writing" or c.get("job") in ["Writer", "Screenplay", "Story"])]
-        # TMDb cast: take ALL available (no artificial 3/15 cap)
-        cast      += [c.get("name", "").strip() for c in (cred.get("cast", []) or [])]
+        # TMDb cast: take ALL available by default; optionally cap via `max_cast`
+        _tmdb_cast = [c.get("name", "").strip() for c in (cred.get("cast", []) or [])]
+        if isinstance(max_cast, int) and max_cast > 0:
+            _tmdb_cast = _tmdb_cast[:max_cast]
+        cast += _tmdb_cast
         # TV creators are important; treat as writers
         if media_type == "show":
             writers += [c.get("name", "").strip() for c in (det.get("created_by") or [])]
@@ -1621,7 +1626,6 @@ if query:
                         imdb_id=imdb_id,
                         title=item.get("title"),
                         year=item.get("year"),
-                        max_cast=50,
                     )
                 else:
                     meta = {"directors": [], "writers": [], "cast": [], "genres": []}
@@ -2075,7 +2079,6 @@ def show_favorites(fav_type, label, favorites=None):
                         imdb_id=imdb_id_local,
                         title=fav.get("title"),
                         year=fav.get("year"),
-                        max_cast=50,
                     )
                     # Persist to Firestore
                     db.collection("favorites").document(fid).update({
@@ -2224,7 +2227,19 @@ elif fav_section == "🎬 İzlenenler":
     elif sort_option_watched == "CineSelect":
         watched_items = sorted(watched_items, key=lambda f: int(f.get("cineselectRating") or 0), reverse=True)
     elif sort_option_watched == "Year":
-        watched_items = sorted(watched_items, key=lambda f: int(f.get("year") or 0), reverse=True)
+        def _safe_int_year(val, default=0):
+            try:
+                if val in (None, "", "N/A"):
+                    return default
+                if isinstance(val, (int, float)):
+                    return int(val)
+                if isinstance(val, str):
+                    s = val.strip().replace("%", "")
+                    return int(float(s))
+                return default
+            except Exception:
+                return default
+        watched_items = sorted(watched_items, key=lambda f: _safe_int_year(f.get("year"), 0), reverse=True)
     from datetime import datetime as _dt
     from collections import defaultdict, OrderedDict
     import calendar
@@ -2628,8 +2643,25 @@ elif fav_section == "🖤 Blacklist":
     st.subheader("🖤 Blacklist")
     bl_docs = db.collection("favorites").where("status", "==", "blacklist").stream()
     bl_items = [doc.to_dict() for doc in bl_docs]
-    # sort by year desc, then CS
-    bl_items = sorted(bl_items, key=lambda f: (int(f.get("year") or 0), int(f.get("cineselectRating") or 0)), reverse=True)
+    # sort by year desc, then CS (tolerant to 'N/A', empty, strings)
+    def _safe_int(val, default=0):
+        try:
+            if val in (None, "", "N/A"):
+                return default
+            if isinstance(val, (int, float)):
+                return int(val)
+            if isinstance(val, str):
+                s = val.strip().replace("%", "")
+                return int(float(s))
+            return default
+        except Exception:
+            return default
+
+    bl_items = sorted(
+        bl_items,
+        key=lambda f: (_safe_int(f.get("year"), 0), _safe_int(f.get("cineselectRating"), 0)),
+        reverse=True
+    )
 
     for idx, fav in enumerate(bl_items, start=1):
         cols = st.columns([1, 5, 1])
@@ -2838,7 +2870,6 @@ elif fav_section == "🖤 Blacklist":
                         imdb_id=imdb_id_local,
                         title=fav.get("title"),
                         year=fav.get("year"),
-                        max_cast=50,
                     )
                     db.collection("favorites").document(fid).update({
                         "directors": meta.get("directors", []),
