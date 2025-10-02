@@ -1807,13 +1807,8 @@ def show_favorites(fav_type, label, favorites=None):
                     # Cache to seed_meta.csv if we have a valid IMDb id
                     if imdb_id_local:
                         append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
-                    # Show a quick inline summary
-                    st.markdown(
-                        "**🎬 Full Meta yüklendi**  \n"
-                        f"**Director(s)/Writer(s):** {', '.join((meta.get('directors') or []) + (meta.get('writers') or []))}  \n"
-                        f"**Cast:** {', '.join(meta.get('cast', [])[:15])}  \n"
-                        f"**Genres:** {', '.join(meta.get('genres', []))}"
-                    )
+                    st.toast("🧠 Full Meta yüklendi ve kaydedildi.")
+                    st.rerun()
                 if st.button("✏️", key=f"edit_{fid}"):
                     _safe_set_state(f"edit_mode_{fid}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
@@ -1904,9 +1899,10 @@ if fav_section == "📌 İzlenecekler":
         key="sync_order_to_watch",
         horizontal=True
     )
-    if media_type == "Movie":
+    # Always show the relevant lists; when Actor/Director modes are active, show BOTH
+    if media_type in ["Movie", "Actor/Actress", "Director/Writer"]:
         show_favorites("movie", "Filmler")
-    elif media_type == "TV Show":
+    if media_type in ["TV Show", "Actor/Actress", "Director/Writer"]:
         show_favorites("show", "Diziler")
 elif fav_section == "🎬 İzlenenler":
     st.markdown("---")
