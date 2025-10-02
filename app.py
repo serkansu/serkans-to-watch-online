@@ -1390,6 +1390,19 @@ with st.expander("✨ Options"):
     if st.button("📊 Favori Sayılarını Göster"):
         show_favorites_count()
 
+    # 5. Blacklist temizleme
+    if st.button("🗑️ Blacklist'teki Filmleri Sil"):
+        try:
+            blacklist_docs = db.collection("favorites").where("status", "==", "blacklist").stream()
+            count = 0
+            for d in blacklist_docs:
+                d.reference.delete()
+                count += 1
+            st.success(f"🗑️ Blacklist'ten {count} öğe silindi.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Blacklist silme hatası: {e}")
+
 show_posters = st.session_state["show_posters"]
 media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress", "Director/Writer"], horizontal=True)
 
