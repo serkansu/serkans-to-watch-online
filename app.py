@@ -949,24 +949,23 @@ if query:
         for idx, item in enumerate(results):
             st.divider()
             # Posterleri tıklanabilir hale getir
-            if item.get("poster") and show_posters:
-                # Yeni IMDb linki ve poster kısmı
-                imdb_id = item.get("imdb_id") or item.get("imdbID") or item.get("imdb") or ""
-                imdb_id = str(imdb_id).strip()
+            if show_posters:
+                poster_url = item.get("Poster") or item.get("poster_path") or item.get("poster")
+                imdb_id = item.get("imdbID") or item.get("imdb_id") or ""
                 if imdb_id:
                     imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
                 else:
                     imdb_url = item.get("imdb_url", "")
-                poster_url = item["poster"]
-                if imdb_url:
-                    st.markdown(
-                        f"<a href='{imdb_url}' target='_blank'>"
-                        f"<img src='{poster_url}' alt='{item['title']}' width='180'/>"
-                        "</a>",
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.image(poster_url, width=180)
+                if poster_url:
+                    if imdb_url:
+                        st.markdown(
+                            f"<a href='{imdb_url}' target='_blank'>"
+                            f"<img src='{poster_url}' alt='{item.get('Title', item.get('title', ''))}' width='180'/>"
+                            "</a>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.image(poster_url, width=180)
 
             # Checkbox ile seçim (tekli ekleme butonunu kaldırdık)
             checkbox_label = f"{item['title']} ({item.get('year','?')})"
@@ -1139,18 +1138,22 @@ def show_favorites(fav_type, label, favorites=None):
         cols = st.columns([1, 5, 1])
         with cols[0]:
             if show_posters and fav.get("poster"):
-                imdb_id_link = str(
-                    fav.get("imdb") or fav.get("imdb_id") or fav.get("imdbID") or ""
-                ).strip()
-                poster_url = fav["poster"]
-                if imdb_id_link and imdb_id_link.startswith("tt"):
-                    st.markdown(
-                        f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank" rel="noopener">'
-                        f'<img src="{poster_url}" width="120"/></a>',
-                        unsafe_allow_html=True,
-                    )
+                poster_url = fav.get("Poster") or fav.get("poster_path") or fav.get("poster")
+                imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
+                if imdb_id:
+                    imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
                 else:
-                    st.image(poster_url, width=120)
+                    imdb_url = fav.get("imdb_url", "")
+                if poster_url:
+                    if imdb_url:
+                        st.markdown(
+                            f"<a href='{imdb_url}' target='_blank'>"
+                            f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
+                            "</a>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.image(poster_url, width=120)
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             # --- Comments section: İzlenenler-style logic, with sort, edit, delete, and add ---
@@ -1582,12 +1585,18 @@ elif fav_section == "🎬 İzlenenler":
                 rt_display = f"{rt_num}%" if rt_num > 0 else "N/A"
                 cols = st.columns([1, 5, 1])
                 with cols[0]:
-                    if fav.get("poster"):
-                        imdb_id_link = str(fav.get("imdb") or "").strip()
-                        poster_url = fav["poster"]
-                        if imdb_id_link.startswith("tt"):
+                    poster_url = fav.get("Poster") or fav.get("poster_path") or fav.get("poster")
+                    imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
+                    if imdb_id:
+                        imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
+                    else:
+                        imdb_url = fav.get("imdb_url", "")
+                    if poster_url:
+                        if imdb_url:
                             st.markdown(
-                                f'<a href="https://www.imdb.com/title/{imdb_id_link}/" target="_blank"><img src="{poster_url}" width="120"/></a>',
+                                f"<a href='{imdb_url}' target='_blank'>"
+                                f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
+                                "</a>",
                                 unsafe_allow_html=True
                             )
                         else:
