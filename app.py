@@ -1153,14 +1153,124 @@ def show_favorites_count():
         st.metric("📺 Favorite TV Shows", series_count)
 
 # --- Quick Toolbar (always visible) ---
+
+# Helper: Bulk Full Meta Update
+def bulk_full_meta_update():
+    """
+    Toplu Full Meta güncellemesi:
+    - status in ("to_watch", "watched") olan TÜM öğeleri (film+dizi) dolaşır.
+    - IMDb ID yoksa TMDb'den çözer.
+    - fetch_full_meta ile directors/writers/cast/genres alanlarını getirir.
+    - Firestore'a yazar ve session_state içindeki ilgili kaydı da günceller.
+    - seed_meta.csv'e de (IMDb ID varsa) yazar.
+    """
+    try:
+        # Tüm favorileri al (blacklist hariç)
+        docs = db.collection("favorites").stream()
+        items = []
+        for d in docs:
+            fav = d.to_dict()
+            status = fav.get("status") or "to_watch"
+            if status in ("to_watch", "watched"):
+                items.append(fav)
+    except Exception as e:
+        st.error(f"❌ Firestore okuma hatası: {e}")
+        return
+
+    total = len(items)
+    if total == 0:
+        st.info("ℹ️ Güncellenecek öğe bulunamadı.")
+        return
+
+    st.warning("🧠 Tüm öğeler için Full Meta güncelleniyor… Bu işlem birkaç dakika sürebilir.")
+    progress = st.progress(0)
+    done = 0
+
+    for fav in items:
+        try:
+            # Güvenli kimlik ve tip
+            fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
+            if not fid:
+                done += 1
+                progress.progress(min(1.0, done / total))
+                continue
+            fav_type = (fav.get("type") or "movie")
+
+            # IMDb ID çöz
+            imdb_id_local = fav.get("imdb")
+            if not imdb_id_local:
+                imdb_id_local = get_imdb_id_from_tmdb(
+                    fav.get("title"),
+                    fav.get("year"),
+                    is_series=(fav_type == "show"),
+                )
+
+            # Full Meta getir
+            meta = fetch_full_meta(
+                tmdb_id=str(fid),
+                media_type=("show" if fav_type == "show" else "movie"),
+                imdb_id=imdb_id_local,
+                title=fav.get("title"),
+                year=fav.get("year"),
+            ) or {}
+
+            update_fields = {
+                "directors": meta.get("directors", []),
+                "writers":   meta.get("writers", []),
+                "cast":      meta.get("cast", []),
+                "genres":    meta.get("genres", []),
+            }
+            if imdb_id_local:
+                update_fields["imdb"] = imdb_id_local
+
+            # Firestore'a yaz
+            db.collection("favorites").document(str(fid)).update(update_fields)
+
+            # Session state mirror
+            def _mirror_list(_lst):
+                for it in _lst:
+                    iid = it.get("id") or it.get("imdbID") or it.get("tmdb_id") or it.get("key")
+                    if str(iid) == str(fid):
+                        it["directors"] = update_fields["directors"]
+                        it["writers"]   = update_fields["writers"]
+                        it["cast"]      = update_fields["cast"]
+                        it["genres"]    = update_fields["genres"]
+                        if imdb_id_local:
+                            it["imdb"] = imdb_id_local
+                        break
+
+            if fav_type == "show":
+                _mirror_list(st.session_state.get("favorite_series", []))
+            else:
+                _mirror_list(st.session_state.get("favorite_movies", []))
+
+            # CSV cache
+            try:
+                if imdb_id_local:
+                    append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
+            except Exception:
+                pass
+
+        except Exception:
+            # Sessiz geç (tek tek hatalarda işlem durmasın)
+            pass
+        finally:
+            done += 1
+            try:
+                progress.progress(min(1.0, done / total))
+            except Exception:
+                pass
+
+    st.success(f"✅ Full Meta güncellendi ({total} öğe).")
+    st.rerun()
 # Ensure required defaults
 if "show_posters" not in st.session_state:
     st.session_state["show_posters"] = True
 if "sync_sort_mode" not in st.session_state:
     st.session_state["sync_sort_mode"] = "cc"
 
-# -- Toolbar with new watched sync button --
-tcol1, tcol2, tcol3, tcol4, tcol_sp = st.columns([1.2, 1.6, 1.8, 1.8, 4])
+ # -- Toolbar with new watched sync button --
+tcol1, tcol2, tcol3, tcol4, tcol5, tcol_sp = st.columns([1.2, 1.6, 1.8, 1.8, 2.0, 3.6])
 with tcol1:
     if st.button("🖼️ Toggle Posters", key="toolbar_toggle_posters"):
         st.session_state["show_posters"] = not st.session_state.get("show_posters", True)
@@ -1175,6 +1285,9 @@ with tcol3:
 with tcol4:
     if st.button("📊 Favori Sayıları", key="toolbar_counts"):
         show_favorites_count()
+with tcol5:
+    if st.button("🧠 Full Meta (All)", key="toolbar_fullmeta_all"):
+        bulk_full_meta_update()
 
 
 
@@ -1707,6 +1820,12 @@ def show_favorites(fav_type, label, favorites=None):
             # --- Add new comment (inline) ---
             comment_key = f"to_watch_comment_add_{fid}"
             comment_wb_key = f"to_watch_comment_add_wb_{fid}"
+            clear_flag_key = f"to_watch_comment_clear_{fid}"
+            # Clear deferred: we set this flag right before rerun after posting
+            if st.session_state.get(clear_flag_key, False):
+                _safe_set_state(comment_key, "")
+                _safe_set_state(comment_wb_key, "ss")
+                _safe_set_state(clear_flag_key, False)
             if comment_key not in st.session_state:
                 _safe_set_state(comment_key, "")
             comment_text = st.text_area(
@@ -1744,9 +1863,8 @@ def show_favorites(fav_type, label, favorites=None):
                         if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                             item["comments"] = new_comments
                             break
-                    # 4. inputları sıfırla
-                    _safe_set_state(comment_key, "")
-                    _safe_set_state(comment_wb_key, "ss")
+                    # 4. inputları bir sonraki çalıştırmada temizle
+                    _safe_set_state(clear_flag_key, True)
                     st.success("💬 Yorum kaydedildi!")
                     st.rerun()
         with cols[2]:
