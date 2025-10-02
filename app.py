@@ -959,7 +959,12 @@ if query:
                 poster_url = item["poster"]
                 imdb_url = f"https://www.imdb.com/title/{imdb_id_link}/" if imdb_id_link.startswith("tt") else item.get("imdb_url", "")
                 if imdb_url:
-                    st.markdown(f"[![{item['title']}]({poster_url})]({imdb_url})", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<a href='{imdb_url}' target='_blank'>"
+                        f"<img src='{poster_url}' alt='{item['title']}' width='180'/>"
+                        "</a>",
+                        unsafe_allow_html=True
+                    ), unsafe_allow_html=True)
                 else:
                     st.image(poster_url, width=180)
 
@@ -1070,7 +1075,7 @@ if query:
             for item in selections:
                 add_to_favorites(item, cs_score=101)
             st.success(f"{len(selections)} öğe favorilere eklendi.")
-            st.experimental_rerun()
+            st.rerun()
 
 st.divider()
 st.subheader("🎬 Film / Dizi Listesi")
