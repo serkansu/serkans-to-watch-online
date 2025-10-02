@@ -1403,6 +1403,20 @@ with st.expander("✨ Options"):
         except Exception as e:
             st.error(f"❌ Blacklist silme hatası: {e}")
 
+    # 6. Blacklist tekil silme (her film için)
+    if fav_section == "🖤 Blacklist":
+        for fav in st.session_state.get("favorite_movies", []) + st.session_state.get("favorite_series", []):
+            if fav.get("status") == "blacklist":
+                fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
+                if fid:
+                    if st.button(f"🗑️ {fav.get('title')} ({fav.get('year')}) - Blacklist'ten sil", key=f"del_blacklist_{fid}"):
+                        try:
+                            db.collection("favorites").document(str(fid)).delete()
+                            st.success(f"🗑️ {fav.get('title')} blacklist'ten silindi.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Blacklist silme hatası: {e}")
+
 show_posters = st.session_state["show_posters"]
 media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress", "Director/Writer"], horizontal=True)
 
