@@ -1753,7 +1753,7 @@ elif fav_section == "🎬 İzlenenler":
                                 cs_val_new = st.number_input(
                                     "CineSelect Puanı (1-150)",
                                     min_value=1,
-                                    max_value=100,
+                                    max_value=150,
                                     value=int(fav.get("cineselectRating", 50)),
                                     step=1,
                                     key=cs_number_key
@@ -1882,7 +1882,7 @@ elif fav_section == "🎬 İzlenenler":
                             st.number_input(
                                 "🎯 CS:",
                                 min_value=1,
-                                max_value=100,
+                                max_value=150,
                                 value=st.session_state[i_key],
                                 step=1,
                                 key=i_key
@@ -2087,7 +2087,7 @@ elif fav_section == "🎬 İzlenenler":
                                     cs_val_new = st.number_input(
                                         "CineSelect Puanı (1-150)",
                                         min_value=1,
-                                        max_value=100,
+                                        max_value=150,
                                         value=int(fav.get("cineselectRating", 50)),
                                         step=1,
                                         key=cs_number_key
@@ -2215,7 +2215,7 @@ elif fav_section == "🎬 İzlenenler":
                                 st.number_input(
                                     "🎯 CS:",
                                     min_value=1,
-                                    max_value=100,
+                                    max_value=150,
                                     value=st.session_state[i_key],
                                     step=1,
                                     key=i_key
