@@ -278,6 +278,147 @@ def read_seed_rating(imdb_id: str):
         pass
     return None
 # --- /seed okuma fonksiyonu ---
+# --- seed_meta.csv helpers (Full Meta caching) ---
+SEED_META_PATH = Path(__file__).parent / "seed_meta.csv"
+
+import re as _re_meta
+
+def _split_people_csv(s: str) -> list[str]:
+    parts = []
+    for p in (s or "").split(","):
+        t = p.strip()
+        if not t or t.upper() == "N/A":
+            continue
+        # remove trailing role parentheses like "(screenplay)"
+        t = _re_meta.sub(r"\s*\(.*?\)\s*$", "", t).strip()
+        if t:
+            parts.append(t)
+    return parts
+
+def _dedup_keep_order(items: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for x in items or []:
+        if not x:
+            continue
+        if x in seen:
+            continue
+        seen.add(x)
+        out.append(x)
+    return out
+
+def read_seed_meta(imdb_id: str):
+    """Return cached full meta from seed_meta.csv if present."""
+    try:
+        iid = (imdb_id or "").strip()
+        if not iid or not SEED_META_PATH.exists():
+            return None
+        with SEED_META_PATH.open(newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            for row in r:
+                key = (row.get("imdb_id") or "").strip()
+                if key == iid:
+                    def _split_semis(v):
+                        return [x.strip() for x in (v or "").split(";") if x and x.strip()]
+                    return {
+                        "directors": _split_semis(row.get("directors")),
+                        "writers":   _split_semis(row.get("writers")),
+                        "cast":      _split_semis(row.get("cast")),
+                        "genres":    _split_semis(row.get("genres")),
+                    }
+    except Exception:
+        pass
+    return None
+
+def append_seed_meta(imdb_id, title, year, meta):
+    """Append a new row into seed_meta.csv if imdb_id is not already there."""
+    if not imdb_id or imdb_id == "tt0000000":
+        return
+    exists = False
+    if SEED_META_PATH.exists():
+        with SEED_META_PATH.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if (r.get("imdb_id") or "").strip() == imdb_id:
+                    exists = True
+                    break
+    if exists:
+        return
+    write_header = not SEED_META_PATH.exists() or SEED_META_PATH.stat().st_size == 0
+    with SEED_META_PATH.open("a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if write_header:
+            w.writerow(["imdb_id", "title", "year", "directors", "cast", "genres", "writers"])
+        w.writerow([
+            imdb_id,
+            title,
+            str(year or ""),
+            "; ".join(meta.get("directors", [])),
+            "; ".join(meta.get("cast", [])),
+            "; ".join(meta.get("genres", [])),
+            "; ".join(meta.get("writers", [])),
+        ])
+
+def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, title: str | None = None, year: int | None = None) -> dict:
+    """Gather director(s), writer(s)/creator(s), cast and genres using OMDb (by IMDb ID if available) + TMDb by TMDb id."""
+    tmdb_key = os.getenv("TMDB_API_KEY")
+    omdb_key = os.getenv("OMDB_API_KEY")
+
+    directors: list[str] = []
+    writers: list[str]   = []
+    cast: list[str]      = []
+    genres: list[str]    = []
+
+    # 0) Use seed cache first if we have a stable IMDb ID
+    seed = read_seed_meta(imdb_id or "")
+    if seed:
+        directors += seed.get("directors", [])
+        writers   += seed.get("writers", [])
+        cast      += seed.get("cast", [])
+        genres    += seed.get("genres", [])
+
+    # 1) OMDb by IMDb id (if present)
+    if omdb_key and imdb_id:
+        try:
+            r = requests.get("http://www.omdbapi.com/", params={"i": imdb_id, "apikey": omdb_key}, timeout=20)
+            d = r.json() or {}
+            directors += _split_people_csv(d.get("Director", ""))
+            writers   += _split_people_csv(d.get("Writer", ""))
+            cast      += _split_people_csv(d.get("Actors", ""))
+            genres    += [g.strip() for g in (d.get("Genre") or "").split(",") if g and g.strip() and g.strip().upper() != "N/A"]
+        except Exception:
+            pass
+
+    # 2) TMDb by TMDb id & media_type
+    try:
+        if media_type == "movie":
+            cred = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits",
+                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+            det  = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}",
+                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+        else:
+            cred = requests.get(f"https://api.themoviedb.org/3/tv/{tmdb_id}/credits",
+                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+            det  = requests.get(f"https://api.themoviedb.org/3/tv/{tmdb_id}",
+                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+        crew = cred.get("crew", []) or []
+        directors += [c.get("name", "").strip() for c in crew if (c.get("department") == "Directing" or c.get("job") == "Director")]
+        writers   += [c.get("name", "").strip() for c in crew if (c.get("department") == "Writing" or c.get("job") in ["Writer", "Screenplay", "Story"])]
+        cast      += [c.get("name", "").strip() for c in (cred.get("cast", []) or [])[:15]]
+        # TV creators are important; treat as writers
+        if media_type == "show":
+            writers += [c.get("name", "").strip() for c in (det.get("created_by") or [])]
+        genres    += [g.get("name", "").strip() for g in (det.get("genres") or [])]
+    except Exception:
+        pass
+
+    meta = {
+        "directors": _dedup_keep_order([x for x in directors if x]),
+        "writers":   _dedup_keep_order([x for x in writers if x]),
+        "cast":      _dedup_keep_order([x for x in cast if x]),
+        "genres":    _dedup_keep_order([x for x in genres if x]),
+    }
+    return meta
+# --- /seed_meta helpers ---
 def get_ratings(imdb_id):
     import requests
     OMDB_API_KEY = os.getenv("OMDB_API_KEY")
@@ -1625,6 +1766,49 @@ def show_favorites(fav_type, label, favorites=None):
                         st.rerun()
                     else:
                         st.error(f"❌ IMDb ID bulunamadı: {fav.get('title')}")
+
+                # 🧠 Full Meta: fetch directors/writers/cast/genres via OMDb+TMDb and save to Firestore + seed_meta.csv
+                if st.button("🧠 Full Meta", key=f"fullmeta_{fid}"):
+                    imdb_id_local = fav.get("imdb")
+                    # If IMDb ID missing, resolve via TMDb search (movie vs show)
+                    if not imdb_id_local:
+                        imdb_id_local = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type == "show"))
+                        if imdb_id_local:
+                            db.collection("favorites").document(fid).update({"imdb": imdb_id_local})
+                            fav["imdb"] = imdb_id_local
+                    # Fetch meta using TMDb id (fid) and current media type
+                    meta = fetch_full_meta(
+                        tmdb_id=str(fid),
+                        media_type=("show" if fav_type == "show" else "movie"),
+                        imdb_id=imdb_id_local,
+                        title=fav.get("title"),
+                        year=fav.get("year"),
+                    )
+                    # Persist to Firestore
+                    db.collection("favorites").document(fid).update({
+                        "directors": meta.get("directors", []),
+                        "writers":   meta.get("writers", []),
+                        "cast":      meta.get("cast", []),
+                        "genres":    meta.get("genres", []),
+                    })
+                    # Mirror in session_state
+                    for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                        if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
+                            item["directors"] = meta.get("directors", [])
+                            item["writers"]   = meta.get("writers", [])
+                            item["cast"]      = meta.get("cast", [])
+                            item["genres"]    = meta.get("genres", [])
+                            break
+                    # Cache to seed_meta.csv if we have a valid IMDb id
+                    if imdb_id_local:
+                        append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
+                    # Show a quick inline summary
+                    st.markdown(
+                        "**🎬 Full Meta yüklendi**  \n"
+                        f"**Director(s)/Writer(s):** {', '.join((meta.get('directors') or []) + (meta.get('writers') or []))}  \n"
+                        f"**Cast:** {', '.join(meta.get('cast', [])[:15])}  \n"
+                        f"**Genres:** {', '.join(meta.get('genres', []))}"
+                    )
                 if st.button("✏️", key=f"edit_{fid}"):
                     _safe_set_state(f"edit_mode_{fid}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
