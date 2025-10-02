@@ -404,9 +404,9 @@ def search_by_director_writer(name: str) -> list[dict]:
             title = c.get("title") if media_type == "movie" else (c.get("name") or c.get("title") or "")
             date = c.get("release_date") if media_type == "movie" else c.get("first_air_date")
             try:
-                year = int(str(date)[:4]) if date else None
+                year = int(str(date)[:4]) if date else 0
             except Exception:
-                year = None
+                year = 0
             poster_path = c.get("poster_path") or ""
 
             out.append({
@@ -476,9 +476,9 @@ def search_by_actor_full(name: str) -> list[dict]:
             title = c.get("title") if media_type == "movie" else (c.get("name") or c.get("title") or "")
             date = c.get("release_date") if media_type == "movie" else c.get("first_air_date")
             try:
-                year = int(str(date)[:4]) if date else None
+                year = int(str(date)[:4]) if date else 0
             except Exception:
-                year = None
+                year = 0
             poster_path = c.get("poster_path") or ""
 
             out.append({
@@ -1098,7 +1098,12 @@ if query:
         st.error("❌ No results found.")
     else:
         # Sıralama: yıl'a göre yeni→eski
-        results.sort(key=lambda x: x.get("year", 0), reverse=True)
+        def _safe_year(v):
+            try:
+                return int(str(v or 0).strip() or 0)
+            except Exception:
+                return 0
+        results.sort(key=lambda x: _safe_year(x.get("year")), reverse=True)
 
         # Seçimler için checkbox listesi
         selections = []
@@ -1117,7 +1122,7 @@ if query:
                     title_for_lookup = item.get("title") or item.get("Title") or ""
                     year_for_lookup = item.get("year")
                     try:
-                        is_series_flag = (item.get("media_type") == "tv") or (media_type == "TV Show")
+                        is_series_flag = (item.get("media_type") == "tv") or (media_type == "TV Show") or bool(item.get("first_air_date"))
                         imdb_id = get_imdb_id_from_tmdb(
                             title_for_lookup,
                             year_for_lookup,
