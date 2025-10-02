@@ -341,6 +341,86 @@ def get_imdb_id_from_tmdb(title, year=None, is_series=False):
 
     imdb_id = external_response.json().get("imdb_id", "")
     return imdb_id or ""
+
+
+# --- NEW: search_by_director_writer helper ---
+def search_by_director_writer(name: str) -> list[dict]:
+    """
+    Given a person name, return movies/TV shows where they worked in Directing or Writing (incl. 'Creator').
+    Results contain: id, title, year, poster_path, poster (full URL), media_type ('movie'|'tv').
+    """
+    try:
+        tmdb_api_key = os.getenv("TMDB_API_KEY")
+        if not tmdb_api_key or not (name or "").strip():
+            return []
+
+        # 1) Find the person by name
+        r = requests.get(
+            "https://api.themoviedb.org/3/search/person",
+            params={"api_key": tmdb_api_key, "query": name, "include_adult": False},
+            timeout=20,
+        )
+        if r.status_code != 200:
+            return []
+        people = (r.json() or {}).get("results", []) or []
+        if not people:
+            return []
+        person_id = people[0].get("id")
+        if not person_id:
+            return []
+
+        # 2) Fetch their combined credits
+        cr = requests.get(
+            f"https://api.themoviedb.org/3/person/{person_id}/combined_credits",
+            params={"api_key": tmdb_api_key},
+            timeout=20,
+        )
+        if cr.status_code != 200:
+            return []
+        data = cr.json() or {}
+        crew_list = data.get("crew", []) or []
+
+        allowed_depts = {"Directing", "Writing"}
+        allowed_jobs = {"Director", "Writer", "Screenplay", "Story", "Creator", "Developed by", "Showrunner"}
+
+        # Deduplicate by (media_type, tmdb_id)
+        seen = set()
+        out: list[dict] = []
+        for c in crew_list:
+            dept = (c.get("department") or "").strip()
+            job = (c.get("job") or "").strip()
+            if not ((dept in allowed_depts) or (job in allowed_jobs)):
+                continue
+
+            media_type = c.get("media_type") or ("tv" if c.get("first_air_date") else "movie")
+            tmdb_id = c.get("id")
+            if tmdb_id is None:
+                continue
+            key = f"{media_type}:{tmdb_id}"
+            if key in seen:
+                continue
+            seen.add(key)
+
+            title = c.get("title") if media_type == "movie" else (c.get("name") or c.get("title") or "")
+            date = c.get("release_date") if media_type == "movie" else c.get("first_air_date")
+            try:
+                year = int(str(date)[:4]) if date else None
+            except Exception:
+                year = None
+            poster_path = c.get("poster_path") or ""
+
+            out.append({
+                "id": str(tmdb_id),
+                "title": title,
+                "year": year,
+                "poster_path": poster_path,
+                "poster": f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "",
+                "media_type": media_type,
+            })
+
+        return out
+    except Exception:
+        return []
 def push_favorites_to_github():
     """Push favorites.json and seed_ratings.csv to their respective GitHub repos.
     - favorites.json  -> serkansu/serkans-to-watch-addon
@@ -857,7 +937,7 @@ with st.expander("✨ Options"):
         show_favorites_count()
 
 show_posters = st.session_state["show_posters"]
-media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress"], horizontal=True)
+media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress", "Director/Writer"], horizontal=True)
 
 # ---- Safe clear for search widgets (avoid modifying after instantiation)
 if "clear_search" not in st.session_state:
@@ -930,8 +1010,10 @@ if query:
         results = search_movie(query)
     elif media_type == "TV Show":
         results = search_tv(query)
-    else:
+    elif media_type == "Actor/Actress":
         results = search_by_actor(query)
+    else:  # "Director/Writer"
+        results = search_by_director_writer(query)
 
     try:
         results = sorted(results, key=lambda x: x.get("cineselectRating", 0), reverse=True)
@@ -1032,8 +1114,12 @@ if query:
 
         # Toplu ekleme butonu
         def add_to_favorites(item, cs_score=101):
-            # media_key: Movie/TV Show ayrımı
-            media_key = "movie" if media_type == "Movie" else ("show" if media_type == "TV Show" else "movie")
+            # media_key: Movie/TV Show ayrımı (robust for mixed results)
+            media_key = (
+                "movie" if (item.get("media_type") == "movie" or media_type == "Movie")
+                else "show" if (item.get("media_type") == "tv" or media_type == "TV Show" or item.get("first_air_date"))
+                else "movie"
+            )
             from omdb import get_ratings, fetch_ratings
             imdb_id = (item.get("imdb") or "").strip()
             if not imdb_id or imdb_id == "tt0000000":
