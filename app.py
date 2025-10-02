@@ -421,6 +421,80 @@ def search_by_director_writer(name: str) -> list[dict]:
         return out
     except Exception:
         return []
+
+# --- NEW: search_by_actor_full helper ---
+def search_by_actor_full(name: str) -> list[dict]:
+    """
+    Full filmography search for a person in Acting (cast).
+    Uses TMDb /search/person then /person/{id}/combined_credits and returns
+    movies & TV shows they acted in, sorted by year desc.
+    """
+    try:
+        tmdb_api_key = os.getenv("TMDB_API_KEY")
+        if not tmdb_api_key or not (name or "").strip():
+            return []
+
+        # 1) Find the person by name
+        r = requests.get(
+            "https://api.themoviedb.org/3/search/person",
+            params={"api_key": tmdb_api_key, "query": name, "include_adult": False},
+            timeout=20,
+        )
+        if r.status_code != 200:
+            return []
+        people = (r.json() or {}).get("results", []) or []
+        if not people:
+            return []
+        person_id = people[0].get("id")
+        if not person_id:
+            return []
+
+        # 2) Fetch their combined credits (cast)
+        cr = requests.get(
+            f"https://api.themoviedb.org/3/person/{person_id}/combined_credits",
+            params={"api_key": tmdb_api_key},
+            timeout=20,
+        )
+        if cr.status_code != 200:
+            return []
+        data = cr.json() or {}
+        cast_list = data.get("cast", []) or []
+
+        # Deduplicate by (media_type, tmdb_id)
+        seen = set()
+        out: list[dict] = []
+        for c in cast_list:
+            media_type = c.get("media_type") or ("tv" if c.get("first_air_date") else "movie")
+            tmdb_id = c.get("id")
+            if tmdb_id is None:
+                continue
+            key = f"{media_type}:{tmdb_id}"
+            if key in seen:
+                continue
+            seen.add(key)
+
+            title = c.get("title") if media_type == "movie" else (c.get("name") or c.get("title") or "")
+            date = c.get("release_date") if media_type == "movie" else c.get("first_air_date")
+            try:
+                year = int(str(date)[:4]) if date else None
+            except Exception:
+                year = None
+            poster_path = c.get("poster_path") or ""
+
+            out.append({
+                "id": str(tmdb_id),
+                "title": title,
+                "year": year,
+                "poster_path": poster_path,
+                "poster": f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "",
+                "media_type": media_type,
+            })
+
+        # Sort newest first
+        out.sort(key=lambda x: x.get("year") or 0, reverse=True)
+        return out
+    except Exception:
+        return []
 def push_favorites_to_github():
     """Push favorites.json and seed_ratings.csv to their respective GitHub repos.
     - favorites.json  -> serkansu/serkans-to-watch-addon
@@ -1011,7 +1085,7 @@ if query:
     elif media_type == "TV Show":
         results = search_tv(query)
     elif media_type == "Actor/Actress":
-        results = search_by_actor(query)
+        results = search_by_actor_full(query) or search_by_actor(query)
     else:  # "Director/Writer"
         results = search_by_director_writer(query)
 
@@ -1043,11 +1117,12 @@ if query:
                     title_for_lookup = item.get("title") or item.get("Title") or ""
                     year_for_lookup = item.get("year")
                     try:
-                        imdb_id = get_imdb_id_from_tmdb(
-                            title_for_lookup,
-                            year_for_lookup,
-                            is_series=(media_type == "TV Show"),
-                        ) or ""
+                is_series_flag = (item.get("media_type") == "tv") or (media_type == "TV Show")
+                imdb_id = get_imdb_id_from_tmdb(
+                    title_for_lookup,
+                    year_for_lookup,
+                    is_series=is_series_flag,
+                ) or ""
                         # Cache back into the item so later steps (add_to_favorites) can reuse it
                         if imdb_id:
                             item["imdbID"] = imdb_id
