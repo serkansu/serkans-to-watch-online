@@ -343,6 +343,37 @@ def get_imdb_id_from_tmdb(title, year=None, is_series=False):
     return imdb_id or ""
 
 
+#
+# --- Helper: pick the best matching person (avoid name collisions like "Harrison Ford" silent-era actor) ---
+def _pick_person(people: list[dict], target_depts: set[str] | None = None, name_query: str | None = None):
+    """
+    Choose the most likely intended person.
+    Strategy:
+      1) Filter by target departments if provided (e.g., {"Acting"} or {"Directing","Writing"}).
+      2) Prefer exact name matches (case-insensitive).
+      3) Among remaining candidates, choose the one with highest popularity.
+    Returns the chosen person's TMDb id or None.
+    """
+    if not people:
+        return None
+    name_q = (name_query or "").strip().lower()
+    # Department filter
+    cand = []
+    for p in people:
+        if target_depts:
+            dept = (p.get("known_for_department") or "").strip()
+            if dept not in target_depts:
+                continue
+        cand.append(p)
+    if not cand:
+        cand = people
+    # Prefer exact name matches
+    exact = [p for p in cand if (p.get("name", "").strip().lower() == name_q)]
+    pool = exact or cand
+    # Pick by highest popularity
+    best = max(pool, key=lambda x: (x.get("popularity") or 0))
+    return best.get("id")
+
 # --- NEW: search_by_director_writer helper ---
 def search_by_director_writer(name: str) -> list[dict]:
     """
@@ -365,7 +396,7 @@ def search_by_director_writer(name: str) -> list[dict]:
         people = (r.json() or {}).get("results", []) or []
         if not people:
             return []
-        person_id = people[0].get("id")
+        person_id = _pick_person(people, target_depts={"Directing", "Writing"}, name_query=name)
         if not person_id:
             return []
 
@@ -445,7 +476,7 @@ def search_by_actor_full(name: str) -> list[dict]:
         people = (r.json() or {}).get("results", []) or []
         if not people:
             return []
-        person_id = people[0].get("id")
+        person_id = _pick_person(people, target_depts={"Acting"}, name_query=name)
         if not person_id:
             return []
 
@@ -1149,7 +1180,9 @@ if query:
 
             # Checkbox ile seçim (tekli ekleme butonunu kaldırdık)
             checkbox_label = f"{item['title']} ({item.get('year','?')})"
-            selected = st.checkbox(checkbox_label, key=f"select_{item.get('id',item['title'])}")
+            # Ensure a unique key per result (avoid StreamlitDuplicateElementKey across movie/tv with same TMDb id)
+            widget_key = f"select_{item.get('media_type','unknown')}_{item.get('id') or item.get('title')}_{idx}"
+            selected = st.checkbox(checkbox_label, key=widget_key)
             if selected:
                 selections.append(item)
 
