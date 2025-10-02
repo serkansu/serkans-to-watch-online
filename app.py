@@ -1,4 +1,4 @@
-from tmdb import search_movie, search_tv, search_by_actor, search_by_actor_full, search_by_director_writer
+from tmdb import search_movie, search_tv, search_by_actor
 from omdb import get_ratings
 import csv
 from pathlib import Path
@@ -1402,20 +1402,6 @@ with st.expander("✨ Options"):
             st.rerun()
         except Exception as e:
             st.error(f"❌ Blacklist silme hatası: {e}")
-
-    # 6. Blacklist tekil silme (her film için)
-    if fav_section == "🖤 Blacklist":
-        for fav in st.session_state.get("favorite_movies", []) + st.session_state.get("favorite_series", []):
-            if fav.get("status") == "blacklist":
-                fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
-                if fid:
-                    if st.button(f"🗑️ {fav.get('title')} ({fav.get('year')}) - Blacklist'ten sil", key=f"del_blacklist_{fid}"):
-                        try:
-                            db.collection("favorites").document(str(fid)).delete()
-                            st.success(f"🗑️ {fav.get('title')} blacklist'ten silindi.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Blacklist silme hatası: {e}")
 
 show_posters = st.session_state["show_posters"]
 media_type = st.radio("Search type:", ["Movie", "TV Show", "Actor/Actress", "Director/Writer"], horizontal=True)
@@ -2846,6 +2832,25 @@ elif fav_section == "🖤 Blacklist":
                         _safe_set_state(new_wb_key, "ss")
                         st.success("💬 Yorum kaydedildi!")
                         st.rerun()
+
+            # --- BLACKLIST DELETE BUTTON ---
+            delete_btn = st.button("🗑️ Sil", key=f"delete_blacklist_{fav['id']}")
+            if delete_btn:
+                db.collection("favorites").document(fav["id"]).delete()
+                # Remove from session_state
+                fav_type_local = (fav.get("type") or "movie")
+                if fav_type_local == "movie":
+                    st.session_state["favorite_movies"] = [
+                        item for item in st.session_state.get("favorite_movies", [])
+                        if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) != fav["id"]
+                    ]
+                else:
+                    st.session_state["favorite_series"] = [
+                        item for item in st.session_state.get("favorite_series", [])
+                        if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) != fav["id"]
+                    ]
+                st.success("🗑️ Film blacklist'ten silindi!")
+                st.rerun()
 
         with cols[2]:
             with st.expander("✨ Options"):
