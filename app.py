@@ -948,14 +948,32 @@ if query:
         selections = []
         for idx, item in enumerate(results):
             st.divider()
-            # Posterleri tıklanabilir hale getir
+            # 🔗 Normalize poster and ensure clickable IMDb link for search results
             if show_posters:
-                poster_url = item.get("Poster") or item.get("poster_path") or item.get("poster")
-                imdb_id = item.get("imdbID") or item.get("imdb_id") or ""
-                if imdb_id:
-                    imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
-                else:
-                    imdb_url = item.get("imdb_url", "")
+                poster_url = item.get("Poster") or item.get("poster") or item.get("poster_path") or ""
+                # If we got a raw TMDb /poster_path, prefix the full TMDb image base
+                if poster_url.startswith("/"):
+                    poster_url = f"https://image.tmdb.org/t/p/w500{poster_url}"
+
+                # Prefer existing IDs; if not present, resolve via TMDb external_ids
+                imdb_id = item.get("imdbID") or item.get("imdb_id") or item.get("imdb") or ""
+                if not imdb_id:
+                    title_for_lookup = item.get("title") or item.get("Title") or ""
+                    year_for_lookup = item.get("year")
+                    try:
+                        imdb_id = get_imdb_id_from_tmdb(
+                            title_for_lookup,
+                            year_for_lookup,
+                            is_series=(media_type == "TV Show"),
+                        ) or ""
+                        # Cache back into the item so later steps (add_to_favorites) can reuse it
+                        if imdb_id:
+                            item["imdbID"] = imdb_id
+                    except Exception:
+                        imdb_id = ""
+
+                imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (item.get("imdb_url", "") or "")
+
                 if poster_url:
                     if imdb_url:
                         st.markdown(
@@ -2453,7 +2471,19 @@ elif fav_section == "🖤 Blacklist":
                         })
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
+                    elif status_select == "blacklist":
+                        doc_ref.update({
+                            "status": "blacklist",
+                            "blacklistedBy": st.session_state.get("current_user", "ss"),
+                            "blacklistedAt": now_str,
+                            "watchedBy": None,
+                            "watchedAt": None,
+                            "watchedEmoji": None,
+                        })
+                        st.session_state["fav_section"] = "🖤 Blacklist"
+                        st.success(f"🖤 {fav['title']} durumu güncellendi: blacklist")
                         st.rerun()
+                        
                     elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                         # watchedBy, watchedAt, cs default 60, emoji "😐"
                         doc_ref.update({
