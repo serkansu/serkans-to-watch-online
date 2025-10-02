@@ -1438,7 +1438,7 @@ def show_favorites(fav_type, label, favorites=None):
                     st.number_input(
                         "🎯 CS:",
                         min_value=1,
-                        max_value=100,
+                        max_value=150,
                         value=st.session_state.get(i_key, current),
                         step=1,
                         key=i_key
