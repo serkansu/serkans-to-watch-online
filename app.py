@@ -964,7 +964,7 @@ if query:
                         f"<img src='{poster_url}' alt='{item['title']}' width='180'/>"
                         "</a>",
                         unsafe_allow_html=True
-                    ), unsafe_allow_html=True)
+                    )
                 else:
                     st.image(poster_url, width=180)
 
