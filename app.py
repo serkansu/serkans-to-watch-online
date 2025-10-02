@@ -1742,7 +1742,7 @@ elif fav_section == "🎬 İzlenenler":
                         if cs_prompt_needed:
                             with st.expander("💬 Yorum / Onay"):
                                 cs_val_new = st.number_input(
-                                    "CineSelect Puanı (1-100)",
+                                    "CineSelect Puanı (1-150)",
                                     min_value=1,
                                     max_value=100,
                                     value=int(fav.get("cineselectRating", 50)),
@@ -2076,7 +2076,7 @@ elif fav_section == "🎬 İzlenenler":
                             if cs_prompt_needed:
                                 with st.expander("💬 Yorum / Onay"):
                                     cs_val_new = st.number_input(
-                                        "CineSelect Puanı (1-100)",
+                                        "CineSelect Puanı (1-150)",
                                         min_value=1,
                                         max_value=100,
                                         value=int(fav.get("cineselectRating", 50)),
