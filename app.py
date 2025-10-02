@@ -1117,12 +1117,12 @@ if query:
                     title_for_lookup = item.get("title") or item.get("Title") or ""
                     year_for_lookup = item.get("year")
                     try:
-                is_series_flag = (item.get("media_type") == "tv") or (media_type == "TV Show")
-                imdb_id = get_imdb_id_from_tmdb(
-                    title_for_lookup,
-                    year_for_lookup,
-                    is_series=is_series_flag,
-                ) or ""
+                        is_series_flag = (item.get("media_type") == "tv") or (media_type == "TV Show")
+                        imdb_id = get_imdb_id_from_tmdb(
+                            title_for_lookup,
+                            year_for_lookup,
+                            is_series=is_series_flag,
+                        ) or ""
                         # Cache back into the item so later steps (add_to_favorites) can reuse it
                         if imdb_id:
                             item["imdbID"] = imdb_id
