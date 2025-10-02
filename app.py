@@ -1092,7 +1092,9 @@ if query:
             for item in selections:
                 add_to_favorites(item, cs_score=101)
             st.success(f"{len(selections)} öğe favorilere eklendi.")
-            st.session_state["search_query"] = ""
+            _safe_set_state("query_input", "")
+            _safe_set_state("query", "")
+            _safe_set_state("clear_search", True)
             st.rerun()
 
 st.divider()
