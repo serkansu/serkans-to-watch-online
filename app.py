@@ -1434,10 +1434,35 @@ if query:
                     source = "OMDb-title"
             imdb_rating = float(stats.get("imdb_rating") or 0.0)
             rt_score    = int(stats.get("rt") or 0)
+
+            # --- Auto Full Meta on add ---
+            # Resolve Full Meta using TMDb + OMDb; cache to seed_meta.csv
+            try:
+                tmdb_id_for_meta = str(item.get("id") or item.get("tmdb_id") or "")
+                if tmdb_id_for_meta:
+                    meta = fetch_full_meta(
+                        tmdb_id=tmdb_id_for_meta,
+                        media_type=media_key,   # "movie" or "show"
+                        imdb_id=imdb_id,
+                        title=item.get("title"),
+                        year=item.get("year")
+                    )
+                else:
+                    meta = {"directors": [], "writers": [], "cast": [], "genres": []}
+            except Exception:
+                meta = {"directors": [], "writers": [], "cast": [], "genres": []}
+
+            # Try to persist meta cache for next time
+            try:
+                append_seed_meta(imdb_id, item.get("title"), item.get("year"), meta)
+            except Exception:
+                pass
+
             _doc_ref = db.collection("favorites").document(item["id"])
             _prev = _doc_ref.get()
             _prev_data = _prev.to_dict() if _prev.exists else {}
             _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
+
             payload = {
                 "id": item["id"],
                 "title": item["title"],
@@ -1449,6 +1474,11 @@ if query:
                 "cineselectRating": cs_score,
                 "type": media_key,
                 "addedAt": _added_at,
+                # ⬇️ Full Meta fields
+                "directors": meta.get("directors", []),
+                "writers":   meta.get("writers", []),
+                "cast":      meta.get("cast", []),
+                "genres":    meta.get("genres", []),
             }
             _doc_ref.set(payload)
             append_seed_rating(
@@ -2270,15 +2300,13 @@ elif fav_section == "🎬 İzlenenler":
 
                         from datetime import datetime
                         fid = fav.get("id")
-                        fav_type = (fav.get("type") or "movie")
+                        fav_type_local = (fav.get("type") or "movie")
 
-                        if status_select != current_status_str:
                         # --- Extra actions in WATCHED: refresh ratings & fetch full meta ---
                         if st.button("🔄 IMDb&RT", key=f"watched_refresh_{fid}"):
                             imdb_id = fav.get("imdb")
-                            # If imdb_id is missing, try resolving from TMDb
                             if not imdb_id:
-                                imdb_id = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type=="show"))
+                                imdb_id = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type_local=="show"))
                                 if imdb_id:
                                     db.collection("favorites").document(fid).update({"imdb": imdb_id})
                                     fav["imdb"] = imdb_id
@@ -2299,14 +2327,14 @@ elif fav_section == "🎬 İzlenenler":
                         if st.button("🧠 Full Meta", key=f"watched_fullmeta_{fid}"):
                             imdb_id_local = fav.get("imdb")
                             if not imdb_id_local:
-                                imdb_id_local = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type == "show"))
+                                imdb_id_local = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type_local == "show"))
                                 if imdb_id_local:
                                     db.collection("favorites").document(fid).update({"imdb": imdb_id_local})
                                     fav["imdb"] = imdb_id_local
 
                             meta = fetch_full_meta(
                                 tmdb_id=str(fid),
-                                media_type=("show" if fav_type == "show" else "movie"),
+                                media_type=("show" if fav_type_local == "show" else "movie"),
                                 imdb_id=imdb_id_local,
                                 title=fav.get("title"),
                                 year=fav.get("year"),
@@ -2317,8 +2345,8 @@ elif fav_section == "🎬 İzlenenler":
                                 "cast":      meta.get("cast", []),
                                 "genres":    meta.get("genres", []),
                             })
-                            # mirror session state
-                            for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                            # mirror session_state
+                            for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
                                 if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                     item["directors"] = meta.get("directors", [])
                                     item["writers"]   = meta.get("writers", [])
@@ -2329,10 +2357,12 @@ elif fav_section == "🎬 İzlenenler":
                                 append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
                             st.toast("🧠 Full Meta yüklendi ve kaydedildi.")
                             st.rerun()
+
+                        # --- Fast transitions for WATCHED section (status change) ---
+                        if status_select != current_status_str:
                             doc_ref = db.collection("favorites").document(fid)
 
                             if status_select == "to_watch":
-                                # Move back to To-Watch quickly
                                 doc_ref.update({
                                     "status": "to_watch",
                                     "watchedBy": None,
@@ -2342,7 +2372,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "blacklistedAt": None,
                                 })
                                 # mirror session_state
-                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
                                     if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                         item.update({
                                             "status": "to_watch",
@@ -2358,7 +2388,6 @@ elif fav_section == "🎬 İzlenenler":
                                 st.rerun()
 
                             elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
-                                # Stay in Watched with quick update
                                 now_str = format_turkish_datetime(datetime.now())
                                 doc_ref.update({
                                     "status": "watched",
@@ -2369,7 +2398,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "blacklistedBy": None,
                                     "blacklistedAt": None,
                                 })
-                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
                                     if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                         item.update({
                                             "status": "watched",
@@ -2386,7 +2415,6 @@ elif fav_section == "🎬 İzlenenler":
                                 st.rerun()
 
                             elif status_select == "🖤 BL":
-                                # --- FAST SWITCH to Blacklist (requested fix) ---
                                 now_str = format_turkish_datetime(datetime.now())
                                 doc_ref.update({
                                     "status": "blacklist",
@@ -2395,8 +2423,7 @@ elif fav_section == "🎬 İzlenenler":
                                     "watchedBy": None,
                                     "watchedAt": None,
                                 })
-                                # mirror session_state
-                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
                                     if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                         item.update({
                                             "status": "blacklist",
@@ -2406,7 +2433,6 @@ elif fav_section == "🎬 İzlenenler":
                                             "watchedAt": None,
                                         })
                                         break
-                                # Switch UI section immediately like To-Watch fast path
                                 st.session_state["fav_section"] = "🖤 Blacklist"
                                 st.success(f"✅ {fav['title']} blacklist'e taşındı!")
                                 st.rerun()
