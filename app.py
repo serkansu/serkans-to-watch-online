@@ -1,4 +1,4 @@
-from tmdb import search_movie, search_tv, search_by_actor
+from tmdb import search_movie, search_tv, search_by_actor, search_by_actor_full, search_by_director_writer
 from omdb import get_ratings
 import csv
 from pathlib import Path
