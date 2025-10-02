@@ -950,14 +950,14 @@ if query:
             st.divider()
             # Posterleri tıklanabilir hale getir
             if item.get("poster") and show_posters:
-                imdb_id_link = str(
-                    item.get("imdb")
-                    or item.get("imdb_id")
-                    or item.get("imdbID")
-                    or ""
-                ).strip()
+                # Yeni IMDb linki ve poster kısmı
+                imdb_id = item.get("imdb_id") or item.get("imdbID") or item.get("imdb") or ""
+                imdb_id = str(imdb_id).strip()
+                if imdb_id:
+                    imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
+                else:
+                    imdb_url = item.get("imdb_url", "")
                 poster_url = item["poster"]
-                imdb_url = f"https://www.imdb.com/title/{imdb_id_link}/" if imdb_id_link.startswith("tt") else item.get("imdb_url", "")
                 if imdb_url:
                     st.markdown(
                         f"<a href='{imdb_url}' target='_blank'>"
@@ -1075,6 +1075,7 @@ if query:
             for item in selections:
                 add_to_favorites(item, cs_score=101)
             st.success(f"{len(selections)} öğe favorilere eklendi.")
+            st.session_state["search_query"] = ""
             st.rerun()
 
 st.divider()
@@ -1198,8 +1199,8 @@ def show_favorites(fav_type, label, favorites=None):
                     with edit_cols[1]:
                         new_who = st.selectbox(
                             "Yorumu kim yaptı?",
-                            ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss"] else 1),
+                            ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                            index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                             key=edit_who_key
                         )
                     save_col, cancel_col = st.columns([1, 1])
@@ -1241,9 +1242,9 @@ def show_favorites(fav_type, label, favorites=None):
                 )
                 comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
-                    ["öz", "ss", "öz❤️ss"],
-                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(comment_wb_key, "ss"))
-                           if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
+                    ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                    index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state.get(comment_wb_key, "ss"))
+                           if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                     key=comment_wb_key,
                     label_visibility="visible"
                 )
@@ -1283,13 +1284,13 @@ def show_favorites(fav_type, label, favorites=None):
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
-                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
+                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
                 if fav.get("status") == "to_watch":
                     current_status_str = "to_watch"
                 elif fav.get("status") == "watched":
                     wb = fav.get("watchedBy")
-                    if wb in ["öz", "ss", "öz❤️ss"]:
+                    if wb in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                         current_status_str = wb
                     else:
                         current_status_str = "n/w"
@@ -1332,7 +1333,7 @@ def show_favorites(fav_type, label, favorites=None):
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                         st.rerun()
-                    elif status_select in ["öz", "ss", "öz❤️ss", "n/w"]:
+                    elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
                         doc_ref.update({
                             "status": "watched",
@@ -1643,8 +1644,8 @@ elif fav_section == "🎬 İzlenenler":
                             with edit_cols[1]:
                                 new_who = st.selectbox(
                                     "Yorumu kim yaptı?",
-                                    ["öz", "ss", "öz❤️ss"],
-                                    index=( ["öz", "ss", "öz❤️ss"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss"] else 1 ),
+                                    ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                    index=( ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1 ),
                                     key=edit_who_key
                                 )
                             save_col, cancel_col = st.columns([1, 1])
@@ -1682,9 +1683,9 @@ elif fav_section == "🎬 İzlenenler":
                         )
                         comment_wb_val = st.selectbox(
                             "Yorumu kim yaptı?",
-                            ["öz", "ss", "öz❤️ss"],
-                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(comment_wb_key, "ss"))
-                                   if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
+                            ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                            index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state.get(comment_wb_key, "ss"))
+                                   if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                             key=comment_wb_key,
                             label_visibility="visible"
                         )
@@ -1717,12 +1718,12 @@ elif fav_section == "🎬 İzlenenler":
                     with st.expander("✨ Options"):
                         # --- (Comment edit/delete UI is now inline under the film details, not in Options expander) ---
                         # --- Status selectbox (short labels) and all action buttons grouped in expander ---
-                        status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
+                        status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
                         if fav.get("status") == "to_watch":
                             current_status_str = "to_watch"
                         elif fav.get("status") == "watched":
                             wb = fav.get("watchedBy")
-                            if wb in ["öz", "ss", "öz❤️ss"]:
+                            if wb in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                                 current_status_str = wb
                             else:
                                 current_status_str = "n/w"
@@ -1732,7 +1733,7 @@ elif fav_section == "🎬 İzlenenler":
                             current_status_str = "to_watch"
                         status_select = st.selectbox("Watched by", status_options, index=status_options.index(current_status_str) if current_status_str in status_options else 0, key=f"watched_status_{fav['id']}")
                         from datetime import datetime
-                        cs_prompt_needed = (status_select in ["öz", "ss", "öz❤️ss", "🖤 BL"]) and status_select != current_status_str
+                        cs_prompt_needed = (status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "🖤 BL"]) and status_select != current_status_str
                         cs_val = fav.get("cineselectRating", 50)
                         cs_number_key = f"watched_cs_number_{fav['id']}"
                         cs_confirm_key = f"watched_cs_confirm_{fav['id']}"
@@ -1763,8 +1764,8 @@ elif fav_section == "🎬 İzlenenler":
                                 else:
                                     new_comment_who = st.selectbox(
                                         "Yorumu kim yaptı?",
-                                        ["öz", "ss", "öz❤️ss"],
-                                        index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
+                                        ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                        index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                                         key=comment_who_key
                                     )
                                 if st.button("✅ Onayla", key=cs_confirm_key):
@@ -1793,7 +1794,7 @@ elif fav_section == "🎬 İzlenenler":
                                         }
                                         updated_comments.append(new_comment)
                                     doc_ref = db.collection("favorites").document(fav["id"])
-                                    if status_select in ["öz", "ss", "öz❤️ss"]:
+                                    if status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                                         doc_ref.update({
                                             "status": "watched",
                                             "watchedBy": status_select,
@@ -1979,10 +1980,10 @@ elif fav_section == "🎬 İzlenenler":
                                 with edit_cols[1]:
                                     new_who = st.selectbox(
                                         "Yorumu kim yaptı?",
-                                        ["öz", "ss", "öz❤️ss"],
-                                        index=( ["öz", "ss", "öz❤️ss"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss"] else 1 ),
-                                        key=edit_who_key
-                                    )
+                                    ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                    index=( ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(default_who) if default_who in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1 ),
+                                    key=edit_who_key
+                                )
                                 save_col, cancel_col = st.columns([1, 1])
                                 with save_col:
                                     if st.button("💾 Kaydet", key=f"watched_comment_save_{fav['id']}_{c_idx}"):
@@ -2018,9 +2019,9 @@ elif fav_section == "🎬 İzlenenler":
                             )
                             comment_wb_val = st.selectbox(
                                 "Yorumu kim yaptı?",
-                                ["öz", "ss", "öz❤️ss"],
-                                index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(comment_wb_key, "ss"))
-                                       if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
+                                ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state.get(comment_wb_key, "ss"))
+                                       if st.session_state.get(comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                                 key=comment_wb_key,
                                 label_visibility="visible"
                             )
@@ -2051,12 +2052,12 @@ elif fav_section == "🎬 İzlenenler":
                                     st.rerun()
                     with cols[2]:
                         with st.expander("✨ Options"):
-                            status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
+                            status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
                             if fav.get("status") == "to_watch":
                                 current_status_str = "to_watch"
                             elif fav.get("status") == "watched":
                                 wb = fav.get("watchedBy")
-                                if wb in ["öz", "ss", "öz❤️ss"]:
+                                if wb in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                                     current_status_str = wb
                                 else:
                                     current_status_str = "n/w"
@@ -2066,7 +2067,7 @@ elif fav_section == "🎬 İzlenenler":
                                 current_status_str = "to_watch"
                             status_select = st.selectbox("Watched by", status_options, index=status_options.index(current_status_str) if current_status_str in status_options else 0, key=f"watched_status_{fav['id']}")
                             from datetime import datetime
-                            cs_prompt_needed = (status_select in ["öz", "ss", "öz❤️ss", "🖤 BL"]) and status_select != current_status_str
+                            cs_prompt_needed = (status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "🖤 BL"]) and status_select != current_status_str
                             cs_val = fav.get("cineselectRating", 50)
                             cs_number_key = f"watched_cs_number_{fav['id']}"
                             cs_confirm_key = f"watched_cs_confirm_{fav['id']}"
@@ -2097,8 +2098,8 @@ elif fav_section == "🎬 İzlenenler":
                                     else:
                                         new_comment_who = st.selectbox(
                                             "Yorumu kim yaptı?",
-                                            ["öz", "ss", "öz❤️ss"],
-                                            index=(["öz", "ss", "öz❤️ss"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss"] else 1),
+                                            ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                            index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state[comment_who_key]) if st.session_state[comment_who_key] in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                                             key=comment_who_key
                                         )
                                     if st.button("✅ Onayla", key=cs_confirm_key):
@@ -2126,7 +2127,7 @@ elif fav_section == "🎬 İzlenenler":
                                             }
                                             updated_comments.append(new_comment)
                                         doc_ref = db.collection("favorites").document(fav["id"])
-                                        if status_select in ["öz", "ss", "öz❤️ss"]:
+                                        if status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                                             doc_ref.update({
                                                 "status": "watched",
                                                 "watchedBy": status_select,
@@ -2314,9 +2315,9 @@ elif fav_section == "🖤 Blacklist":
                 bl_comment_wb_key = f"bl_comment_wb_{fav['id']}"
                 bl_comment_wb_val = st.selectbox(
                     "Yorumu kim yaptı?",
-                    ["öz", "ss", "öz❤️ss"],
-                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state.get(bl_comment_wb_key, "ss"))
-                           if st.session_state.get(bl_comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss"] else 1),
+                    ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                    index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state.get(bl_comment_wb_key, "ss"))
+                           if st.session_state.get(bl_comment_wb_key, "ss") in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 1),
                     key=bl_comment_wb_key,
                     label_visibility="visible",
                 )
@@ -2389,9 +2390,9 @@ elif fav_section == "🖤 Blacklist":
                             with edit_cols[1]:
                                 new_who = st.selectbox(
                                     "Yorumu kim yaptı?",
-                                    ["öz", "ss", "öz❤️ss"],
-                                    index=(["öz", "ss", "öz❤️ss"].index(st.session_state[edit_who_key])
-                                           if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss"] else 0),
+                                    ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                                    index=(["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"].index(st.session_state[edit_who_key])
+                                           if st.session_state[edit_who_key] in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"] else 0),
                                     key=edit_who_key
                                 )
 
@@ -2408,13 +2409,13 @@ elif fav_section == "🖤 Blacklist":
                                 _safe_set_state(f"edit_bl_comment_mode_{fav['id']}_{c_idx}", False)
                                 st.rerun()
                 # --- Status selectbox for Blacklist (restore) ---
-                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "n/w", "🖤 BL"]
+                status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
                 if fav.get("status") == "to_watch":
                     current_status_str = "to_watch"
                 elif fav.get("status") == "watched":
                     wb = fav.get("watchedBy")
-                    if wb in ["öz", "ss", "öz❤️ss"]:
+                    if wb in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                         current_status_str = wb
                     else:
                         current_status_str = "n/w"
@@ -2444,7 +2445,7 @@ elif fav_section == "🖤 Blacklist":
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                         st.rerun()
-                    elif status_select in ["öz", "ss", "öz❤️ss"]:
+                    elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                         # watchedBy, watchedAt, cs default 60, emoji "😐"
                         doc_ref.update({
                             "status": "watched",
