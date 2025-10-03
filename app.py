@@ -828,39 +828,11 @@ def fix_invalid_imdb_ids(data):
 def sort_flat_for_export(items, mode):
     """Sort a flat media list by the selected mode.
     modes:
-      - 'cc'   : CineSelect DESC (highest first; ties -> IMDb DESC, then Year DESC)
-      - 'imdb' : IMDb DESC
-      - 'year' : Year DESC
+      - 'cc'   : CineSelect DESC (highest first); tie-break Year DESC, then IMDb DESC
+      - 'imdb' : IMDb DESC; tie-break Year DESC, then CineSelect DESC
+      - 'year' : Year DESC; tie-break IMDb DESC, then CineSelect DESC
     """
     def key_fn(it):
-        if mode == "cc":
-            # CineSelect: descending (highest first); tie-break Year (desc), then IMDb (desc)
-            try:
-                cs = int(it.get("cineselectRating") or 0)
-            except Exception:
-                cs = 0
-            try:
-                imdb = float(it.get("imdbRating") or 0)
-            except Exception:
-                imdb = 0.0
-            try:
-                year = int(str(it.get("year", "0")).strip() or 0)
-            except Exception:
-                year = 0
-            # For reverse=True (see return), sort by (cs, year, imdb) descending
-            return (cs, year, imdb)
-        elif mode == "imdb":
-            v = it.get("imdbRating")
-            try:
-                return float(v) if v not in (None, "", "N/A") else -1
-            except Exception:
-                return -1
-        elif mode == "year":
-            try:
-                return int(str(it.get("year", "0")).strip() or 0)
-            except Exception:
-                return 0
-        # default -> behave like 'cc'
         try:
             cs = int(it.get("cineselectRating") or 0)
         except Exception:
@@ -873,9 +845,19 @@ def sort_flat_for_export(items, mode):
             year = int(str(it.get("year", "0")).strip() or 0)
         except Exception:
             year = 0
+        if mode == "cc":
+            # CineSelect: descending (highest first); tie-break Year (desc), then IMDb (desc)
+            return (cs, year, imdb)
+        elif mode == "imdb":
+            # IMDb: descending (highest first); tie-break Year (desc), then CineSelect (desc)
+            return (imdb, year, cs)
+        elif mode == "year":
+            # Year: descending (newest first); tie-break IMDb (desc), then CineSelect (desc)
+            return (year, imdb, cs)
+        # default -> behave like 'cc'
         return (cs, year, imdb)
 
-    # cc -> descending (reverse=True); imdb/year -> descending (reverse=True)
+    # All modes: descending (reverse=True)
     return sorted(items or [], key=key_fn, reverse=True)
 
 # ---------------------- CineSelect clamp & sync helpers ----------------------
