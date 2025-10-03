@@ -1435,7 +1435,7 @@ _shows_all  = list(st.session_state.get("favorite_series", []))
 def get_sort_key(fav):
     sort_name = st.session_state.get("fav_sort", "CineSelect")
     try:
-        # Always return tuple: (CS, IMDb, Year) for CineSelect mode
+        # Always return tuple: (CS, Year, IMDb) for CineSelect mode
         if sort_name == "CineSelect":
             cs = int(fav.get("cineselectRating") or 0)
             try:
@@ -1447,7 +1447,7 @@ def get_sort_key(fav):
             except Exception:
                 year = 0
             # For reverse=True, sort DESC
-            return (cs, imdb, year)
+            return (cs, year, imdb)
         elif sort_name == "IMDb":
             return float(fav.get("imdbRating") or 0)
         elif sort_name == "RT":
