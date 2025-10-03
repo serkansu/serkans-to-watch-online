@@ -834,7 +834,7 @@ def sort_flat_for_export(items, mode):
     """
     def key_fn(it):
         if mode == "cc":
-            # CineSelect: descending (highest first); tie-break IMDb (desc), then year (desc)
+            # CineSelect: descending (highest first); tie-break Year (desc), then IMDb (desc)
             try:
                 cs = int(it.get("cineselectRating") or 0)
             except Exception:
@@ -847,8 +847,8 @@ def sort_flat_for_export(items, mode):
                 year = int(str(it.get("year", "0")).strip() or 0)
             except Exception:
                 year = 0
-            # For reverse=True (see return), sort by (cs, imdb, year) descending
-            return (cs, imdb, year)
+            # For reverse=True (see return), sort by (cs, year, imdb) descending
+            return (cs, year, imdb)
         elif mode == "imdb":
             v = it.get("imdbRating")
             try:
@@ -873,7 +873,7 @@ def sort_flat_for_export(items, mode):
             year = int(str(it.get("year", "0")).strip() or 0)
         except Exception:
             year = 0
-        return (cs, imdb, year)
+        return (cs, year, imdb)
 
     # cc -> descending (reverse=True); imdb/year -> descending (reverse=True)
     return sorted(items or [], key=key_fn, reverse=True)
