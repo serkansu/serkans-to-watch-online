@@ -1587,6 +1587,9 @@ if query:
             # --- Tekli ekleme butonu kaldırıldı ---
             # --- CineSelect manual input kaldırıldı ---
 
+        # CineSelect puanı için numeric input (default 101, min 1, max 1000)
+        cs_input = st.number_input("🎯 CineSelect puanı", min_value=1, max_value=1000, value=101, step=1, key="cineselect_input")
+
         # Toplu ekleme butonu
         def add_to_favorites(item, cs_score=101):
             # media_key: Movie/TV Show ayrımı (robust for mixed results)
@@ -1684,7 +1687,7 @@ if query:
 
         if selections and st.button("➕ Add Selected to Favorites"):
             for item in selections:
-                add_to_favorites(item, cs_score=101)
+                add_to_favorites(item, cs_score=cs_input)
             st.success(f"{len(selections)} öğe favorilere eklendi.")
             _safe_set_state("query_input", "")
             _safe_set_state("query", "")
