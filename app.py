@@ -1598,6 +1598,18 @@ if query:
                 else "show" if (item.get("media_type") == "tv" or media_type == "TV Show" or item.get("first_air_date"))
                 else "movie"
             )
+
+            # --- Duplicate check before adding ---
+            _item_key = f"{_norm_title(item.get('title'))}::{str(item.get('year') or '')}"
+            if media_key == "movie" and _item_key in _movies_idx:
+                _, _pos = _movies_idx[_item_key]
+                st.warning(f"{item['title']} zaten izlenecekler listesinde #{_pos} sırasında.")
+                return
+            elif media_key == "show" and _item_key in _shows_idx:
+                _, _pos = _shows_idx[_item_key]
+                st.warning(f"{item['title']} zaten izlenenler listesinde #{_pos} sırasında.")
+                return
+
             from omdb import get_ratings, fetch_ratings
             imdb_id = (item.get("imdb") or "").strip()
             if not imdb_id or imdb_id == "tt0000000":
