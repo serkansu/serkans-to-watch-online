@@ -2159,19 +2159,22 @@ def show_favorites(fav_type, label, favorites=None):
                             fav["imdb"] = imdb_id_local
                     # Fetch meta using TMDb id (fid) and current media type
                     meta = fetch_full_meta(
-                        tmdb_id=str(fid).replace("tmdb", ""),
+                        tmdb_id=str(fav.get("tmdb_id") or str(fid).replace("tmdb", "")),
                         media_type=("show" if fav_type == "show" else "movie"),
                         imdb_id=imdb_id_local,
                         title=fav.get("title"),
                         year=fav.get("year"),
                     )
+                    _dbg_log(f"[DEBUG] FullMeta result for {fav.get('title')}: overview_len={len(meta.get('overview',''))}")
                     # Persist to Firestore
                     db.collection("favorites").document(fid).update({
                         "directors": meta.get("directors", []),
                         "writers":   meta.get("writers", []),
                         "cast":      meta.get("cast", []),
                         "genres":    meta.get("genres", []),
+                        "overview":  meta.get("overview", "")
                     })
+                    _dbg_log(f"Firestore updated with overview length={len(meta.get('overview',''))}")
                     # Mirror in session_state
                     for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                         if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
