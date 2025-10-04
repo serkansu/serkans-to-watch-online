@@ -2096,11 +2096,11 @@ def show_favorites(fav_type, label, favorites=None):
                     elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
                         try:
-                            # İzleneceklerden her durumda sil
+                            # Her durumda İzlenecekler listesinden sil
                             db.collection("favorites").document(fid).delete()
-                            _dbg_log(f"[CLEANUP] Force removed {fid} from İzlenecekler before marking watched.")
+                            _dbg_log(f"[CLEANUP] Force removed {fid} from İzlenecekler (status changed to watched).")
                         except Exception as e:
-                            _dbg_log(f"[CLEANUP ERROR] Failed to safely delete {fid}: {e}")
+                            _dbg_log(f"[CLEANUP ERROR] Failed to delete {fid}: {e}")
                         # Ardından statüyü watched olarak yeniden ekle
                         db.collection("favorites").document(fid).set({
                             **fav,
