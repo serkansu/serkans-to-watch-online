@@ -2196,62 +2196,25 @@ def show_favorites(fav_type, label, favorites=None):
                         title=fav.get("title"),
                         year=fav.get("year"),
                     )
-                        # Cast 9 kişiyle sınırla ve özet garantile
-                        if meta.get("cast"):
-                            meta["cast"] = meta["cast"][:9]
-                        meta_overview = (meta.get("overview") or "").strip()
-
-                        try:
-                            db.collection("favorites").document(str(fid)).update({
-                                "directors": meta.get("directors", []),
-                                "writers":   meta.get("writers", []),
-                                "cast":      meta.get("cast", []),
-                                "genres":    meta.get("genres", []),
-                                "overview":  meta_overview,
-                            })
-                        except Exception as e:
-                            _dbg_log(f"[FULLMETA] update error: {e}")
-
-                        fav["directors"] = meta.get("directors", [])
-                        fav["writers"]   = meta.get("writers", [])
-                        fav["cast"]      = meta.get("cast", [])
-                        fav["genres"]    = meta.get("genres", [])
-                        fav["overview"]  = meta_overview
-                        st.rerun()
-                    # Limit cast list to first 9 names to optimize performance
-                    if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                    # Cast 9 kişiyle sınırla ve özet garantile
+                    if meta.get("cast"):
                         meta["cast"] = meta["cast"][:9]
-                        _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta['cast'])} names (limit 9)")
-                    _dbg_log(f"[DEBUG] FullMeta result for {fav.get('title')}: overview_len={len(meta.get('overview',''))}")
-                    # Persist to Firestore
-                    db.collection("favorites").document(fid).update({
-                        "directors": meta.get("directors", []),
-                        "writers":   meta.get("writers", []),
-                        "cast":      meta.get("cast", []),
-                        "genres":    meta.get("genres", []),
-                        "overview":  meta.get("overview", "")
-                    })
-                    # --- also update watched movies (ensure overview visible in both sections) ---
-                    db.collection("favorites").document(str(fid)).set({
-                        "overview": meta.get("overview", ""),
-                        "directors": meta.get("directors", []),
-                        "writers": meta.get("writers", []),
-                        "cast": meta.get("cast", []),
-                        "genres": meta.get("genres", [])
-                    }, merge=True)
-                    _dbg_log(f"Firestore updated with overview length={len(meta.get('overview',''))}")
-                    # Mirror in session_state
-                    for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                        if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
-                            item["directors"] = meta.get("directors", [])
-                            item["writers"]   = meta.get("writers", [])
-                            item["cast"]      = meta.get("cast", [])
-                            item["genres"]    = meta.get("genres", [])
-                            break
-                    # Cache to seed_meta.csv if we have a valid IMDb id
-                    if imdb_id_local:
-                        append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
-                    st.toast("🧠 Full Meta yüklendi ve kaydedildi.")
+                    meta_overview = (meta.get("overview") or "").strip()
+                    try:
+                        db.collection("favorites").document(str(fid)).update({
+                            "directors": meta.get("directors", []),
+                            "writers":   meta.get("writers", []),
+                            "cast":      meta.get("cast", []),
+                            "genres":    meta.get("genres", []),
+                            "overview":  meta_overview,
+                        })
+                    except Exception as e:
+                        _dbg_log(f"[FULLMETA] update error: {e}")
+                    fav["directors"] = meta.get("directors", [])
+                    fav["writers"]   = meta.get("writers", [])
+                    fav["cast"]      = meta.get("cast", [])
+                    fav["genres"]    = meta.get("genres", [])
+                    fav["overview"]  = meta_overview
                     st.rerun()
                 if st.button("✏️", key=f"edit_{fid}"):
                     _safe_set_state(f"edit_mode_{fid}", True)
@@ -2697,7 +2660,6 @@ elif fav_section == "🎬 İzlenenler":
                                 if imdb_id_local:
                                     db.collection("favorites").document(fid).update({"imdb": imdb_id_local})
                                     fav["imdb"] = imdb_id_local
-
                             meta = fetch_full_meta(
                                 tmdb_id=str(fid).replace("tmdb", ""),
                                 media_type=("show" if fav_type_local == "show" else "movie"),
@@ -2709,7 +2671,6 @@ elif fav_section == "🎬 İzlenenler":
                             if meta.get("cast"):
                                 meta["cast"] = meta["cast"][:9]
                             meta_overview = (meta.get("overview") or "").strip()
-
                             try:
                                 db.collection("favorites").document(str(fid)).update({
                                     "directors": meta.get("directors", []),
@@ -2720,7 +2681,6 @@ elif fav_section == "🎬 İzlenenler":
                                 })
                             except Exception as e:
                                 _dbg_log(f"[FULLMETA] update error: {e}")
-
                             fav["directors"] = meta.get("directors", [])
                             fav["writers"]   = meta.get("writers", [])
                             fav["cast"]      = meta.get("cast", [])
