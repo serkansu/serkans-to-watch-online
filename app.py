@@ -509,9 +509,9 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
         "writers":   _dedup_keep_order([x for x in writers if x]),
         "cast":      _dedup_keep_order([x for x in cast if x]),
         "genres":    _dedup_keep_order([x for x in genres if x]),
+        "overview":  (det.get("overview") or "").strip(),
     }
-    overview = (det.get("overview") or "").strip()
-    meta["overview"] = overview
+    
     return meta
 # --- /seed_meta helpers ---
 def get_ratings(imdb_id):
@@ -1865,6 +1865,9 @@ def show_favorites(fav_type, label, favorites=None):
                     if st.button("🗑️", key=f"to_watch_comment_del_{fid}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fid).update({"comments": new_comments})
+                        # Eğer overview alanı varsa Firestore’a da kaydet
+                        if fav.get("overview"):
+                            db.collection("favorites").document(fid).update({"overview": fav["overview"]})
                         fav["comments"] = new_comments
                         # mirror session state
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
@@ -1905,7 +1908,10 @@ def show_favorites(fav_type, label, favorites=None):
                                 "watchedBy": new_who,
                                 "date": now_str
                             }
-                            db.collection("favorites").document(fid).update({"comments": comments_sorted})
+                            db.collection("favorites").document(fid).update({
+                                "comments": comments_sorted,
+                                "cineselectRating": fav.get("cineselectRating", 101)
+                            })
                             fav["comments"] = comments_sorted
                             for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
                                 if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
