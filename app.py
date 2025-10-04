@@ -1698,8 +1698,7 @@ if query:
                         title=item.get("title"),
                         year=item.get("year"),
                     )
-                    # Limit cast list to first 9 names to optimize performance
-                    if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                    if meta.get("cast"):
                         meta["cast"] = meta["cast"][:9]
                     _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta.get('cast', []))} names")
                 else:
@@ -2514,6 +2513,16 @@ elif fav_section == "🎬 İzlenenler":
                         "</div>",
                         unsafe_allow_html=True
                     )
+                    # --- Overview block for watched items ---
+                    overview_text = fav.get("overview") or ""
+                    if overview_text:
+                        st.markdown(
+                            f"<div class='movie-summary-collapsible'>"
+                            f"<div class='summary-header'>📜 Özet / Description</div>"
+                            f"<div class='summary-body'>{overview_text}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
                     # --- Comments Section: inline, with edit/delete and inline edit UI (like Blacklist/To-Watch) ---
                     comments = fav.get("comments", [])
                     comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
@@ -2696,28 +2705,27 @@ elif fav_section == "🎬 İzlenenler":
                                 title=fav.get("title"),
                                 year=fav.get("year"),
                             )
-                            # Limit cast list to first 9 names to optimize performance
-                            if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                            # --- Properly update meta fields in Firestore and local dict, matching To-Watch logic ---
+                            if meta.get("cast"):
                                 meta["cast"] = meta["cast"][:9]
-                                _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta['cast'])} names (limit 9)")
-                            db.collection("favorites").document(fid).update({
-                                "directors": meta.get("directors", []),
-                                "writers":   meta.get("writers", []),
-                                "cast":      meta.get("cast", []),
-                                "genres":    meta.get("genres", []),
-                                "overview":  meta.get("overview", ""),
-                            })
-                            # mirror session_state
-                            for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
-                                if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
-                                    item["directors"] = meta.get("directors", [])
-                                    item["writers"]   = meta.get("writers", [])
-                                    item["cast"]      = meta.get("cast", [])
-                                    item["genres"]    = meta.get("genres", [])
-                                    break
-                            if imdb_id_local:
-                                append_seed_meta(imdb_id_local, fav.get("title"), fav.get("year"), meta)
-                            st.toast("🧠 Full Meta yüklendi ve kaydedildi.")
+                            meta_overview = (meta.get("overview") or "").strip()
+
+                            try:
+                                db.collection("favorites").document(str(fid)).update({
+                                    "directors": meta.get("directors", []),
+                                    "writers":   meta.get("writers", []),
+                                    "cast":      meta.get("cast", []),
+                                    "genres":    meta.get("genres", []),
+                                    "overview":  meta_overview,
+                                })
+                            except Exception as e:
+                                _dbg_log(f"[FULLMETA] update error: {e}")
+
+                            fav["directors"] = meta.get("directors", [])
+                            fav["writers"]   = meta.get("writers", [])
+                            fav["cast"]      = meta.get("cast", [])
+                            fav["genres"]    = meta.get("genres", [])
+                            fav["overview"]  = meta_overview
                             st.rerun()
 
                         # --- Fast transitions for WATCHED section (status change) ---
@@ -2751,17 +2759,14 @@ elif fav_section == "🎬 İzlenenler":
 
                             elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                                 now_str = format_turkish_datetime(datetime.now())
+                                # Move the try block out of the dict update
+                                try:
+                                    db.collection("favorites").document(fid).update({"status": "watched"})
+                                    st.session_state["favorite_movies"] = [x for x in st.session_state.get("favorite_movies", []) if x.get("id") != fid]
+                                    st.session_state["favorite_series"] = [x for x in st.session_state.get("favorite_series", []) if x.get("id") != fid]
+                                except Exception as e:
+                                    _dbg_log(f"[SYNC] cleanup failed: {e}")
                                 doc_ref.update({
-                                    # 🔄 İzleneceklerden sil (watched olanlar listede kalmasın)
-                                    # (Kısa cleanup, watched listesine taşınırken to_watch listesinden çıkar)
-                                    # (session_state ve Firestore güncellemesi)
-                                    # 🔄 İzleneceklerden sil (watched olanlar listede kalmasın)
-                                    try:
-                                        db.collection("favorites").document(fid).update({"status": "watched"})
-                                        st.session_state["favorite_movies"] = [x for x in st.session_state.get("favorite_movies", []) if x.get("id") != fid]
-                                        st.session_state["favorite_series"] = [x for x in st.session_state.get("favorite_series", []) if x.get("id") != fid]
-                                    except Exception as e:
-                                        _dbg_log(f"[SYNC] cleanup failed: {e}")
                                     "status": "watched",
                                     "watchedBy": None if status_select == "n/w" else status_select,
                                     "watchedAt": now_str,
