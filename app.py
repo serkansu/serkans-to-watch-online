@@ -1787,7 +1787,7 @@ def show_favorites(fav_type, label, favorites=None):
     # 📦 Firestore'dan veriyi al: İzlenecekler VE İzlenenler birlikte gelsin
     firestore_favorites = [
     doc.to_dict() for doc in db.collection("favorites").where("type", "==", fav_type).stream()
-    if doc.to_dict().get("status") in ("to_watch", "watched", None, "")
+    if doc.to_dict().get("status") in ("to_watch", None, "")
     ]
     favorites = firestore_favorites
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
@@ -2096,13 +2096,18 @@ def show_favorites(fav_type, label, favorites=None):
                     elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
                         try:
-                            # Her durumda İzlenecekler listesinden sil
-                            db.collection("favorites").document(fid).delete()
-                            _dbg_log(f"[CLEANUP] Force removed {fid} from İzlenecekler (status changed to watched).")
+                            # 🔥 İzleneceklerden her durumda sil (id hem tmdb hem imdb olabilir)
+                            possible_ids = [fid, str(fav.get("id")), str(fav.get("imdbID")), str(fav.get("tmdb_id"))]
+                            for pid in possible_ids:
+                                if not pid:
+                                    continue
+                                db.collection("favorites").document(str(pid)).delete()
+                                _dbg_log(f"[CLEANUP] Force removed possible ID {pid} from İzlenecekler (status→watched)")
                         except Exception as e:
                             _dbg_log(f"[CLEANUP ERROR] Failed to delete {fid}: {e}")
+
                         # Ardından statüyü watched olarak yeniden ekle
-                        db.collection("favorites").document(fid).set({
+                        db.collection("favorites").document(str(fid)).set({
                             **fav,
                             "status": "watched",
                             "watchedBy": None if status_select == "n/w" else status_select,
@@ -2113,7 +2118,8 @@ def show_favorites(fav_type, label, favorites=None):
                             "blacklistedAt": None,
                         })
                         _dbg_log(f"[SYNC] Moved {fav.get('title')} to watched and synced successfully.")
-                        # Update session_state
+
+                        # Session state update
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                             if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                 item.update({
