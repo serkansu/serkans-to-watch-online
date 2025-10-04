@@ -2104,6 +2104,19 @@ def show_favorites(fav_type, label, favorites=None):
                             "blacklistedBy": None,
                             "blacklistedAt": None,
                         })
+                        # Eğer film "to_watch" listesinden "watched" durumuna geçtiyse, İzlenecekler listesinden temizle
+                        try:
+                            st.session_state["favorite_movies"] = [
+                                x for x in st.session_state.get("favorite_movies", [])
+                                if x.get("id") != fid
+                            ]
+                            st.session_state["favorite_series"] = [
+                                x for x in st.session_state.get("favorite_series", [])
+                                if x.get("id") != fid
+                            ]
+                            _dbg_log(f"[CLEANUP] Removed {fid} from to_watch after marking as watched.")
+                        except Exception as e:
+                            _dbg_log(f"[CLEANUP ERROR] Could not remove {fid}: {e}")
                         # 🔁 Eğer film "izleneceklerden" "izlenenlere" taşındıysa
                         try:
                             src_doc = db.collection("favorites").document(fid).get()
@@ -2721,7 +2734,15 @@ elif fav_section == "🎬 İzlenenler":
                                 now_str = format_turkish_datetime(datetime.now())
                                 # Move the try block out of the dict update
                                 try:
-                                    db.collection("favorites").document(fid).update({"status": "watched"})
+                                    db.collection("favorites").document(fid).update({
+                                        "status": "watched"
+                                    })
+                                    # Remove from İzlenecekler when moved to Watched
+                                    try:
+                                        db.collection("favorites").document(fid).delete()
+                                        _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler after marking watched.")
+                                    except Exception as e:
+                                        _dbg_log(f"[CLEANUP ERROR] Could not remove {fid}: {e}")
                                     st.session_state["favorite_movies"] = [x for x in st.session_state.get("favorite_movies", []) if x.get("id") != fid]
                                     st.session_state["favorite_series"] = [x for x in st.session_state.get("favorite_series", []) if x.get("id") != fid]
                                 except Exception as e:
