@@ -1836,7 +1836,13 @@ def show_favorites(fav_type, label, favorites=None):
                             unsafe_allow_html=True
                         )
                     else:
-                        st.image(poster_url, width=120)
+                        if poster_url and poster_url.startswith("http"):
+                            st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(
+                                f"<img src='https://placehold.co/120x180?text=No+Image' alt='No Poster' width='120'/>",
+                                unsafe_allow_html=True
+                            )
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             overview_text = fav.get("overview") or ""
@@ -2424,7 +2430,10 @@ elif fav_section == "🎬 İzlenenler":
                                 unsafe_allow_html=True
                             )
                         else:
-                            st.image(poster_url, width=120)
+                            if poster_url and poster_url.startswith("http"):
+                            st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                            else:
+                                st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
                 with cols[1]:
                     emoji = fav.get("watchedEmoji") or "😐"
                     title_str = f"**{idx}. {fav.get('title')} ({fav.get('year')})**"
@@ -2826,7 +2835,10 @@ elif fav_section == "🖤 Blacklist":
                         unsafe_allow_html=True
                     )
                 else:
-                    st.image(poster_url, width=120)
+                    if poster_url and poster_url.startswith("https://image.tmdb.org"):
+                        st.markdown(f"<img src='{poster_url}?refresh=true' width='120'/>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<img src='{poster_url or 'https://via.placeholder.com/120x180?text=No+Image'}' width='120'/>", unsafe_allow_html=True)
 
         with cols[1]:
             imdb_display = f"{float(fav.get('imdbRating') or 0):.1f}" if fav.get("imdbRating") not in (None, "", "N/A") else "N/A"
