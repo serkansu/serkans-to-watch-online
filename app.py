@@ -2605,13 +2605,15 @@ elif fav_section == "🎬 İzlenenler":
                         # --- Status selectbox and fast transitions for WATCHED section ---
                         status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
 
-                        # Compute current status string (same mapping used in To-Watch list)
-                        if fav.get("status") == "to_watch":
+                        # Compute current status string (consistent with To-Watch filtering)
+                        status_val = fav.get("status")
+                        wb = fav.get("watchedBy")
+
+                        if status_val in (None, "", "to_watch"):
                             current_status_str = "to_watch"
-                        elif fav.get("status") == "blacklist":
+                        elif status_val == "blacklist":
                             current_status_str = "🖤 BL"
-                        elif fav.get("status") == "watched":
-                            wb = fav.get("watchedBy")
+                        elif status_val == "watched":
                             if wb in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"]:
                                 current_status_str = wb
                             else:
