@@ -1320,6 +1320,9 @@ def bulk_full_meta_update():
 
             # Firestore'a yaz
             db.collection("favorites").document(str(raw_fid)).update(update_fields)
+            # --- DEBUG LOG: Firestore save overview text
+            if update_fields:
+                _dbg_log(f"FIRESTORE SAVE TEST → id={raw_fid} overview={update_fields.get('overview', '')[:80]}...")
 
             # Session state mirror
             def _mirror_list(_lst):
