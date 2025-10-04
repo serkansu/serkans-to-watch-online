@@ -13,11 +13,17 @@ import time
 # --- Debug logging helpers ---
 def _dbg_log(msg):
     try:
+        # Print to terminal for Render logs
+        print(f"[DEBUG] {msg}", flush=True)
+        # Also store in Streamlit session for UI view
         st.session_state.setdefault("_debug_logs", [])
         from datetime import datetime as __DBG_DT
         st.session_state["_debug_logs"].append(f"[{__DBG_DT.now().strftime('%H:%M:%S')}] {msg}")
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            print(f"[DEBUG_ERR] {e}", flush=True)
+        except Exception:
+            pass
 # --- Turkish month and day name mappings ---
 TURKISH_MONTHS = {
     "January": "Ocak",
