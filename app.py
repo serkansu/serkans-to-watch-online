@@ -1902,9 +1902,10 @@ def show_favorites(fav_type, label, favorites=None):
                     if st.button("🗑️", key=f"to_watch_comment_del_{fid}_{c_idx}"):
                         new_comments = [x for j, x in enumerate(comments_sorted) if j != c_idx]
                         db.collection("favorites").document(fid).update({"comments": new_comments})
-                        # Eğer overview alanı varsa Firestore’a da kaydet
-                        if fav.get("overview"):
-                            db.collection("favorites").document(fid).update({"overview": fav["overview"]})
+                        # Eğer overview alanı varsa onu da Firestore’a yaz (merge)
+                        overview_val = fav.get("overview")
+                        if overview_val:
+                            db.collection("favorites").document(str(fid)).update({"overview": overview_val})
                         fav["comments"] = new_comments
                         # mirror session state
                         for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie" else st.session_state["favorite_series"]):
