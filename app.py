@@ -511,7 +511,11 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
         "genres":    _dedup_keep_order([x for x in genres if x]),
         "overview":  (det.get("overview") or "").strip(),
     }
-    
+    # Eğer meta içinde overview boşsa TMDb'den gelen veriyi kullan
+    if not meta.get("overview"):
+    overview_from_det = (det.get("overview") or "").strip()
+    if overview_from_det:
+        meta["overview"] = overview_from_det
     return meta
 # --- /seed_meta helpers ---
 def get_ratings(imdb_id):
@@ -1901,6 +1905,8 @@ def show_favorites(fav_type, label, favorites=None):
                         )
                     save_col, cancel_col = st.columns([1, 1])
                     with save_col:
+                        # Güncel CineSelect puanını UI'dan al
+                        fav["cineselectRating"] = st.session_state.get(f"cineselectRating_{fid}", fav.get("cineselectRating", 101))
                         if st.button("💾 Kaydet", key=f"to_watch_comment_save_{fid}_{c_idx}"):
                             now_str = format_turkish_datetime(_dt.now())
                             comments_sorted[c_idx] = {
