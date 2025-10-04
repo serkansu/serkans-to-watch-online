@@ -2045,8 +2045,8 @@ def show_favorites(fav_type, label, favorites=None):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
-                # Compute current status string with new logic
-                if fav.get("status") in ("to_watch", "watched"):
+                # Compute current status string with improved logic
+                if fav.get("status") == "to_watch":
                     current_status_str = "to_watch"
                 elif fav.get("status") == "watched":
                     wb = fav.get("watchedBy")
@@ -2096,14 +2096,9 @@ def show_favorites(fav_type, label, favorites=None):
                     elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
                         try:
-                            # Sadece "to_watch" statüsündeki kaydı sil
-                            doc_ref = db.collection("favorites").document(fid)
-                            doc_data = doc_ref.get().to_dict()
-                            if doc_data and doc_data.get("status") == "to_watch":
-                                doc_ref.delete()
-                                _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler after marking watched.")
-                            else:
-                                _dbg_log(f"[SKIP] {fid} not deleted because status was not 'to_watch'")
+                            # İzleneceklerden her durumda sil
+                            db.collection("favorites").document(fid).delete()
+                            _dbg_log(f"[CLEANUP] Force removed {fid} from İzlenecekler before marking watched.")
                         except Exception as e:
                             _dbg_log(f"[CLEANUP ERROR] Failed to safely delete {fid}: {e}")
                         # Ardından statüyü watched olarak yeniden ekle
@@ -2638,8 +2633,16 @@ elif fav_section == "🎬 İzlenenler":
                             if not imdb_id:
                                 imdb_id = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type_local=="show"))
                                 if imdb_id:
-                                    db.collection("favorites").document(fid).update({"imdb": imdb_id})
-                                    fav["imdb"] = imdb_id
+                                    try:
+                                        doc_ref = db.collection("favorites").document(fid)
+                                        if doc_ref.get().exists:
+                                            doc_ref.update({"imdb": imdb_id})
+                                            _dbg_log(f"[UPDATE] IMDb ID set for {fid}")
+                                        else:
+                                            _dbg_log(f"[WARN] Document {fid} not found during IMDb update.")
+                                        fav["imdb"] = imdb_id
+                                    except Exception as e:
+                                        _dbg_log(f"[ERROR] Failed to update IMDb ID for {fid}: {e}")
                             if imdb_id:
                                 stats = get_ratings(imdb_id)
                                 imdb_rating = stats.get("imdb_rating") if stats else None
