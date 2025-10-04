@@ -1779,6 +1779,11 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
+    # 🔎 Aktif sekmeye göre filtreleme
+    if label.startswith("📌"):  # İzlenecekler
+        favorites = [x for x in favorites if (x.get("status") in (None, "", "to_watch"))]
+    elif label.startswith("🎬"):  # İzlenenler
+        favorites = [x for x in favorites if (x.get("status") == "watched")]
     # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
     # 📦 Firestore'dan veriyi al: İzlenecekler VE İzlenenler birlikte gelsin
     firestore_favorites = [
@@ -2042,7 +2047,7 @@ def show_favorites(fav_type, label, favorites=None):
                 # --- Status selectbox (short labels) and all action buttons grouped in expander ---
                 status_options = ["to_watch", "öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w", "🖤 BL"]
                 # Compute current status string with new logic
-                if fav.get("status") == "to_watch":
+                if fav.get("status") in ("to_watch", "watched"):
                     current_status_str = "to_watch"
                 elif fav.get("status") == "watched":
                     wb = fav.get("watchedBy")
@@ -2192,6 +2197,28 @@ def show_favorites(fav_type, label, favorites=None):
                         title=fav.get("title"),
                         year=fav.get("year"),
                     )
+                        # Cast 9 kişiyle sınırla ve özet garantile
+                        if meta.get("cast"):
+                            meta["cast"] = meta["cast"][:9]
+                        meta_overview = (meta.get("overview") or "").strip()
+
+                        try:
+                            db.collection("favorites").document(str(fid)).update({
+                                "directors": meta.get("directors", []),
+                                "writers":   meta.get("writers", []),
+                                "cast":      meta.get("cast", []),
+                                "genres":    meta.get("genres", []),
+                                "overview":  meta_overview,
+                            })
+                        except Exception as e:
+                            _dbg_log(f"[FULLMETA] update error: {e}")
+
+                        fav["directors"] = meta.get("directors", [])
+                        fav["writers"]   = meta.get("writers", [])
+                        fav["cast"]      = meta.get("cast", [])
+                        fav["genres"]    = meta.get("genres", [])
+                        fav["overview"]  = meta_overview
+                        st.rerun()
                     # Limit cast list to first 9 names to optimize performance
                     if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
                         meta["cast"] = meta["cast"][:9]
@@ -2725,6 +2752,16 @@ elif fav_section == "🎬 İzlenenler":
                             elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                                 now_str = format_turkish_datetime(datetime.now())
                                 doc_ref.update({
+                                    # 🔄 İzleneceklerden sil (watched olanlar listede kalmasın)
+                                    # (Kısa cleanup, watched listesine taşınırken to_watch listesinden çıkar)
+                                    # (session_state ve Firestore güncellemesi)
+                                    # 🔄 İzleneceklerden sil (watched olanlar listede kalmasın)
+                                    try:
+                                        db.collection("favorites").document(fid).update({"status": "watched"})
+                                        st.session_state["favorite_movies"] = [x for x in st.session_state.get("favorite_movies", []) if x.get("id") != fid]
+                                        st.session_state["favorite_series"] = [x for x in st.session_state.get("favorite_series", []) if x.get("id") != fid]
+                                    except Exception as e:
+                                        _dbg_log(f"[SYNC] cleanup failed: {e}")
                                     "status": "watched",
                                     "watchedBy": None if status_select == "n/w" else status_select,
                                     "watchedAt": now_str,
