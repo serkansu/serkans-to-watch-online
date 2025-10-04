@@ -2093,60 +2093,42 @@ def show_favorites(fav_type, label, favorites=None):
                         st.session_state["fav_section"] = "📌 İzlenecekler"
                         st.success(f"✅ {fav['title']} durumu güncellendi: to_watch")
                         st.rerun()
-                    elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
-                        now_str = format_turkish_datetime(datetime.now())
-                        doc_ref.update({
-                            "status": "watched",
-                            "watchedBy": None if status_select == "n/w" else status_select,
-                            "watchedAt": now_str,
-                            "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
-                            "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
-                            "blacklistedBy": None,
-                            "blacklistedAt": None,
-                        })
-                        # Eğer film "to_watch" listesinden "watched" durumuna geçtiyse, İzlenecekler listesinden temizle
-                        try:
-                            st.session_state["favorite_movies"] = [
-                                x for x in st.session_state.get("favorite_movies", [])
-                                if x.get("id") != fid
-                            ]
-                            st.session_state["favorite_series"] = [
-                                x for x in st.session_state.get("favorite_series", [])
-                                if x.get("id") != fid
-                            ]
-                            _dbg_log(f"[CLEANUP] Removed {fid} from to_watch after marking as watched.")
-                        except Exception as e:
-                            _dbg_log(f"[CLEANUP ERROR] Could not remove {fid}: {e}")
-                        # 🔁 Eğer film "izleneceklerden" "izlenenlere" taşındıysa
-                        try:
-                            src_doc = db.collection("favorites").document(fid).get()
-                            if src_doc.exists:
-                                src_data = src_doc.to_dict()
-                                comments_data = src_data.get("comments", [])
-                                # Aynı ID'li eski kaydı "to_watch" listesinden sil
-                                db.collection("favorites").document(fid).update({
-                                    "status": "watched",
-                                    "comments": comments_data
-                                })
-                                _dbg_log(f"[SYNC] {fav.get('title')} moved to watched, {len(comments_data)} comments kept")
-                        except Exception as e:
-                            _dbg_log(f"[SYNC ERROR] Failed to sync watched movie: {e}")
-                        # Update session_state
-                        for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
-                            if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
-                                item.update({
-                                    "status": "watched",
-                                    "watchedBy": None if status_select == "n/w" else status_select,
-                                    "watchedAt": now_str,
-                                    "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
-                                    "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
-                                    "blacklistedBy": None,
-                                    "blacklistedAt": None,
-                                })
-                                break
-                        st.session_state["fav_section"] = "🎬 İzlenenler"
-                        st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
-                        st.rerun()
+                            elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
+                                now_str = format_turkish_datetime(datetime.now())
+                                try:
+                                    # Önce İzlenecekler listesinden sil
+                                    db.collection("favorites").document(fid).delete()
+                                    _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler after marking watched.")
+                                    # Ardından statüyü watched olarak yeniden ekle
+                                    db.collection("favorites").document(fid).set({
+                                        **fav,
+                                        "status": "watched",
+                                        "watchedBy": None if status_select == "n/w" else status_select,
+                                        "watchedAt": now_str,
+                                        "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
+                                        "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
+                                        "blacklistedBy": None,
+                                        "blacklistedAt": None,
+                                    })
+                                    _dbg_log(f"[SYNC] Moved {fav.get('title')} to watched and synced successfully.")
+                                except Exception as e:
+                                    _dbg_log(f"[SYNC ERROR] Failed to move {fid} cleanly: {e}")
+                                # Update session_state
+                                for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
+                                    if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
+                                        item.update({
+                                            "status": "watched",
+                                            "watchedBy": None if status_select == "n/w" else status_select,
+                                            "watchedAt": now_str,
+                                            "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
+                                            "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
+                                            "blacklistedBy": None,
+                                            "blacklistedAt": None,
+                                        })
+                                        break
+                                st.session_state["fav_section"] = "🎬 İzlenenler"
+                                st.success(f"✅ {fav['title']} durumu güncellendi: watched ({status_select})")
+                                st.rerun()
                     elif status_select == "🖤 BL":
                         now_str = format_turkish_datetime(datetime.now())
                         doc_ref.update({
@@ -2732,30 +2714,24 @@ elif fav_section == "🎬 İzlenenler":
 
                             elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                                 now_str = format_turkish_datetime(datetime.now())
-                                # Move the try block out of the dict update
                                 try:
-                                    db.collection("favorites").document(fid).update({
-                                        "status": "watched"
+                                    # Önce İzlenecekler listesinden sil
+                                    db.collection("favorites").document(fid).delete()
+                                    _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler after marking watched.")
+                                    # Ardından statüyü watched olarak yeniden ekle
+                                    db.collection("favorites").document(fid).set({
+                                        **fav,
+                                        "status": "watched",
+                                        "watchedBy": None if status_select == "n/w" else status_select,
+                                        "watchedAt": now_str,
+                                        "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
+                                        "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
+                                        "blacklistedBy": None,
+                                        "blacklistedAt": None,
                                     })
-                                    # Remove from İzlenecekler when moved to Watched
-                                    try:
-                                        db.collection("favorites").document(fid).delete()
-                                        _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler after marking watched.")
-                                    except Exception as e:
-                                        _dbg_log(f"[CLEANUP ERROR] Could not remove {fid}: {e}")
-                                    st.session_state["favorite_movies"] = [x for x in st.session_state.get("favorite_movies", []) if x.get("id") != fid]
-                                    st.session_state["favorite_series"] = [x for x in st.session_state.get("favorite_series", []) if x.get("id") != fid]
+                                    _dbg_log(f"[SYNC] Moved {fav.get('title')} to watched and synced successfully.")
                                 except Exception as e:
-                                    _dbg_log(f"[SYNC] cleanup failed: {e}")
-                                doc_ref.update({
-                                    "status": "watched",
-                                    "watchedBy": None if status_select == "n/w" else status_select,
-                                    "watchedAt": now_str,
-                                    "cineselectRating": 60 if status_select == "n/w" else fav.get("cineselectRating", 60),
-                                    "watchedEmoji": "😐" if status_select == "n/w" else fav.get("watchedEmoji", "😐"),
-                                    "blacklistedBy": None,
-                                    "blacklistedAt": None,
-                                })
+                                    _dbg_log(f"[SYNC ERROR] Failed to move {fid} cleanly: {e}")
                                 for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
                                     if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
                                         item.update({
