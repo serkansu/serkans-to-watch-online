@@ -3076,6 +3076,11 @@ elif fav_section == "🖤 Blacklist":
 
                     elif status_select in ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g", "n/w"]:
                         now_str = format_turkish_datetime(datetime.now())
+                        try:
+                            db.collection("favorites").document(fid).delete()
+                            _dbg_log(f"[CLEANUP] Removed {fid} from İzlenecekler before adding to Watched.")
+                        except Exception as e:
+                            _dbg_log(f"[CLEANUP ERROR] Could not remove {fid} from İzlenecekler: {e}")
                         doc_ref.update({
                             "status": "watched",
                             "watchedBy": None if status_select == "n/w" else status_select,
