@@ -493,6 +493,7 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
             )
             det = det_resp.json() if det_resp.status_code == 200 else {}
             _dbg_log(f"TMDb fetch movie: id={tmdb_id} cred={getattr(cred_resp,'status_code',None)} det={getattr(det_resp,'status_code',None)} overview_present={bool((det or {}).get('overview'))}")
+            _dbg_log(f"TMDb URL check → https://www.themoviedb.org/{'movie' if media_type == 'movie' else 'tv'}/{tmdb_id}")
         else:
             cred_resp = requests.get(
                 f"https://api.themoviedb.org/3/tv/{tmdb_id}/credits",
@@ -505,6 +506,7 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
             )
             det = det_resp.json() if det_resp.status_code == 200 else {}
             _dbg_log(f"TMDb fetch tv: id={tmdb_id} cred={getattr(cred_resp,'status_code',None)} det={getattr(det_resp,'status_code',None)} overview_present={bool((det or {}).get('overview'))}")
+            _dbg_log(f"TMDb URL check → https://www.themoviedb.org/{'movie' if media_type == 'movie' else 'tv'}/{tmdb_id}")
         crew = cred.get("crew", []) or []
         directors += [c.get("name", "").strip() for c in crew if (c.get("department") == "Directing" or c.get("job") == "Director")]
         writers   += [c.get("name", "").strip() for c in crew if (c.get("department") == "Writing" or c.get("job") in ["Writer", "Screenplay", "Story"])]
@@ -2143,6 +2145,7 @@ def show_favorites(fav_type, label, favorites=None):
 
                 # 🧠 Full Meta: fetch directors/writers/cast/genres via OMDb+TMDb and save to Firestore + seed_meta.csv
                 if st.button("🧠 Full Meta", key=f"fullmeta_{fid}"):
+                    _dbg_log(f"[DEBUG] Calling fetch_full_meta tmdb_id={str(fid).replace('tmdb', '')}")
                     imdb_id_local = fav.get("imdb")
                     # If IMDb ID missing, resolve via TMDb search (movie vs show)
                     if not imdb_id_local:
@@ -2152,7 +2155,7 @@ def show_favorites(fav_type, label, favorites=None):
                             fav["imdb"] = imdb_id_local
                     # Fetch meta using TMDb id (fid) and current media type
                     meta = fetch_full_meta(
-                        tmdb_id=str(fid),
+                        tmdb_id=str(fid).replace("tmdb", ""),
                         media_type=("show" if fav_type == "show" else "movie"),
                         imdb_id=imdb_id_local,
                         title=fav.get("title"),
@@ -2605,6 +2608,7 @@ elif fav_section == "🎬 İzlenenler":
                                 st.error(f"❌ IMDb ID bulunamadı: {fav.get('title')}")
 
                         if st.button("🧠 Full Meta", key=f"watched_fullmeta_{fid}"):
+                            _dbg_log(f"[DEBUG] Calling fetch_full_meta tmdb_id={str(fid).replace('tmdb', '')}")
                             imdb_id_local = fav.get("imdb")
                             if not imdb_id_local:
                                 imdb_id_local = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type_local == "show"))
@@ -2613,7 +2617,7 @@ elif fav_section == "🎬 İzlenenler":
                                     fav["imdb"] = imdb_id_local
 
                             meta = fetch_full_meta(
-                                tmdb_id=str(fid),
+                                tmdb_id=str(fid).replace("tmdb", ""),
                                 media_type=("show" if fav_type_local == "show" else "movie"),
                                 imdb_id=imdb_id_local,
                                 title=fav.get("title"),
@@ -2954,6 +2958,7 @@ elif fav_section == "🖤 Blacklist":
                         st.error(f"❌ IMDb ID bulunamadı: {fav.get('title')}")
 
                 if st.button("🧠 Full Meta", key=f"bl_fullmeta_{fid}"):
+                    _dbg_log(f"[DEBUG] Calling fetch_full_meta tmdb_id={str(fid).replace('tmdb', '')}")
                     imdb_id_local = fav.get("imdb")
                     if not imdb_id_local:
                         imdb_id_local = get_imdb_id_from_tmdb(fav.get("title"), fav.get("year"), is_series=(fav_type_local == "show"))
@@ -2962,7 +2967,7 @@ elif fav_section == "🖤 Blacklist":
                             fav["imdb"] = imdb_id_local
 
                     meta = fetch_full_meta(
-                        tmdb_id=str(fid),
+                        tmdb_id=str(fid).replace("tmdb", ""),
                         media_type=("show" if fav_type_local == "show" else "movie"),
                         imdb_id=imdb_id_local,
                         title=fav.get("title"),
