@@ -468,15 +468,27 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
     # 2) TMDb by TMDb id & media_type
     try:
         if media_type == "movie":
-            cred = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits",
-                                params={"api_key": tmdb_key}, timeout=20).json() or {}
-            det  = requests.get(f"https://api.themoviedb.org/3/movie/{tmdb_id}",
-                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+            cred_resp = requests.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits",
+                params={"api_key": tmdb_key}, timeout=20
+            )
+            cred = cred_resp.json() if cred_resp.status_code == 200 else {}
+            det_resp = requests.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}",
+                params={"api_key": tmdb_key}, timeout=20
+            )
+            det = det_resp.json() if det_resp.status_code == 200 else {}
         else:
-            cred = requests.get(f"https://api.themoviedb.org/3/tv/{tmdb_id}/credits",
-                                params={"api_key": tmdb_key}, timeout=20).json() or {}
-            det  = requests.get(f"https://api.themoviedb.org/3/tv/{tmdb_id}",
-                                params={"api_key": tmdb_key}, timeout=20).json() or {}
+            cred_resp = requests.get(
+                f"https://api.themoviedb.org/3/tv/{tmdb_id}/credits",
+                params={"api_key": tmdb_key}, timeout=20
+            )
+            cred = cred_resp.json() if cred_resp.status_code == 200 else {}
+            det_resp = requests.get(
+                f"https://api.themoviedb.org/3/tv/{tmdb_id}",
+                params={"api_key": tmdb_key}, timeout=20
+            )
+            det = det_resp.json() if det_resp.status_code == 200 else {}
         crew = cred.get("crew", []) or []
         directors += [c.get("name", "").strip() for c in crew if (c.get("department") == "Directing" or c.get("job") == "Director")]
         writers   += [c.get("name", "").strip() for c in crew if (c.get("department") == "Writing" or c.get("job") in ["Writer", "Screenplay", "Story"])]
