@@ -1769,9 +1769,10 @@ sort_option = st.selectbox(
 
 def show_favorites(fav_type, label, favorites=None):
     # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
+    # 📦 Firestore'dan veriyi al: İzlenecekler VE İzlenenler birlikte gelsin
     firestore_favorites = [
-        doc.to_dict() for doc in db.collection("favorites").where("type", "==", fav_type).stream()
-        if doc.to_dict().get("status") in ("to_watch", None, "")
+    doc.to_dict() for doc in db.collection("favorites").where("type", "==", fav_type).stream()
+    if doc.to_dict().get("status") in ("to_watch", "watched", None, "")
     ]
     favorites = firestore_favorites
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
