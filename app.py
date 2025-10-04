@@ -10,6 +10,14 @@ from firebase_admin import credentials, firestore
 import json
 import os
 import time
+# --- Debug logging helpers ---
+def _dbg_log(msg):
+    try:
+        st.session_state.setdefault("_debug_logs", [])
+        from datetime import datetime as __DBG_DT
+        st.session_state["_debug_logs"].append(f"[{__DBG_DT.now().strftime('%H:%M:%S')}] {msg}")
+    except Exception:
+        pass
 # --- Turkish month and day name mappings ---
 TURKISH_MONTHS = {
     "January": "Ocak",
@@ -478,6 +486,7 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
                 params={"api_key": tmdb_key}, timeout=20
             )
             det = det_resp.json() if det_resp.status_code == 200 else {}
+            _dbg_log(f"TMDb fetch movie: id={tmdb_id} cred={getattr(cred_resp,'status_code',None)} det={getattr(det_resp,'status_code',None)} overview_present={bool((det or {}).get('overview'))}")
         else:
             cred_resp = requests.get(
                 f"https://api.themoviedb.org/3/tv/{tmdb_id}/credits",
@@ -489,6 +498,7 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
                 params={"api_key": tmdb_key}, timeout=20
             )
             det = det_resp.json() if det_resp.status_code == 200 else {}
+            _dbg_log(f"TMDb fetch tv: id={tmdb_id} cred={getattr(cred_resp,'status_code',None)} det={getattr(det_resp,'status_code',None)} overview_present={bool((det or {}).get('overview'))}")
         crew = cred.get("crew", []) or []
         directors += [c.get("name", "").strip() for c in crew if (c.get("department") == "Directing" or c.get("job") == "Director")]
         writers   += [c.get("name", "").strip() for c in crew if (c.get("department") == "Writing" or c.get("job") in ["Writer", "Screenplay", "Story"])]
@@ -511,6 +521,7 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
         "genres":    _dedup_keep_order([x for x in genres if x]),
         "overview":  (det.get("overview") or "").strip(),
     }
+    _dbg_log(f"fetch_full_meta meta: dirs={len(meta.get('directors', []))} writers={len(meta.get('writers', []))} cast={len(meta.get('cast', []))} genres={len(meta.get('genres', []))} overview_len={len(meta.get('overview', ''))}")
     # Eğer meta içinde overview boşsa TMDb'den gelen veriyi kullan
     if not meta.get("overview"):
         overview_from_det = (det.get("overview") or "").strip()
@@ -888,8 +899,8 @@ def _clamp_cs(v: int | float) -> int:
         iv = 0
     if iv < 1:
         return 1
-    if iv > 100:
-        return 100
+    if iv > 1000:
+        return 1000
     return iv
 
 # Streamlit on_change helpers to keep slider and input in sync
@@ -1202,7 +1213,15 @@ deploy_placeholder.markdown(
     f"<div style='color: gray; font-size: 12px;'>Deployed: {_dt.now(pytz.timezone('Europe/Istanbul')).strftime('%d/%m/%Y %H:%M:%S')}</div>",
     unsafe_allow_html=True
 )
-
+# --- Hidden Debug Panel ---
+with st.expander("🪲 Debug Log", expanded=False):
+    if st.button("Clear Debug", key="_dbg_clear"):
+        st.session_state["_debug_logs"] = []
+    logs = st.session_state.get("_debug_logs", [])
+    if logs:
+        st.code("\n".join(logs), language="text")
+    else:
+        st.caption("No logs yet.")
 # --- Favorites count helper (moved above usage) ---
 def show_favorites_count():
     movie_docs = db.collection("favorites").where("type", "==", "movie").stream()
@@ -1285,7 +1304,9 @@ def bulk_full_meta_update():
                 "writers":   meta.get("writers", []),
                 "cast":      meta.get("cast", []),
                 "genres":    meta.get("genres", []),
+                "overview":  meta.get("overview", ""),
             }
+            _dbg_log(f"FULLMETA update id={raw_fid} overview_len={len(meta.get('overview',''))}")
             if imdb_id_local:
                 update_fields["imdb"] = imdb_id_local
 
@@ -1301,6 +1322,7 @@ def bulk_full_meta_update():
                         it["writers"]   = update_fields["writers"]
                         it["cast"]      = update_fields["cast"]
                         it["genres"]    = update_fields["genres"]
+                        it["overview"]  = update_fields.get("overview", "")
                         if imdb_id_local:
                             it["imdb"] = imdb_id_local
                         break
@@ -1614,6 +1636,7 @@ if query:
 
             from omdb import get_ratings, fetch_ratings
             imdb_id = (item.get("imdb") or "").strip()
+            _dbg_log(f"ADD fav: title={item.get('title')} tmdb_id={item.get('id')} imdb={imdb_id}")
             if not imdb_id or imdb_id == "tt0000000":
                 imdb_id = get_imdb_id_from_tmdb(
                     title=item["title"],
@@ -1689,8 +1712,10 @@ if query:
                 "writers":   meta.get("writers", []),
                 "cast":      meta.get("cast", []),
                 "genres":    meta.get("genres", []),
+                "overview":  meta.get("overview", ""),
             }
             _doc_ref.set(payload)
+            _dbg_log(f"ADD saved: id={item['id']} cs={cs_score} imdb={imdb_id} overview_len={len(meta.get('overview',''))}")
             append_seed_rating(
                 imdb_id=imdb_id,
                 title=item["title"],
