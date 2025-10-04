@@ -2175,6 +2175,14 @@ def show_favorites(fav_type, label, favorites=None):
                         "genres":    meta.get("genres", []),
                         "overview":  meta.get("overview", "")
                     })
+                    # --- also update watched movies (ensure overview visible in both sections) ---
+                    db.collection("favorites").document(str(fid)).set({
+                        "overview": meta.get("overview", ""),
+                        "directors": meta.get("directors", []),
+                        "writers": meta.get("writers", []),
+                        "cast": meta.get("cast", []),
+                        "genres": meta.get("genres", [])
+                    }, merge=True)
                     _dbg_log(f"Firestore updated with overview length={len(meta.get('overview',''))}")
                     # Mirror in session_state
                     for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
@@ -2636,6 +2644,7 @@ elif fav_section == "🎬 İzlenenler":
                                 "writers":   meta.get("writers", []),
                                 "cast":      meta.get("cast", []),
                                 "genres":    meta.get("genres", []),
+                                "overview":  meta.get("overview", ""),
                             })
                             # mirror session_state
                             for item in (st.session_state["favorite_movies"] if fav_type_local == "movie" else st.session_state["favorite_series"]):
