@@ -1255,7 +1255,7 @@ def bulk_full_meta_update():
     - seed_meta.csv'e de (IMDb ID varsa) yazar.
     """
     try:
-        # Tüm favorileri al (blacklist hariç)
+        # Tüm favorileri al (status in ("to_watch", "watched"))
         docs = db.collection("favorites").stream()
         items = []
         for d in docs:
@@ -1306,6 +1306,10 @@ def bulk_full_meta_update():
                 year=fav.get("year"),
                 max_cast=50,
             ) or {}
+            # Limit cast list to first 9 names to optimize performance
+            if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                meta["cast"] = meta["cast"][:9]
+            _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta.get('cast', []))} names")
 
             update_fields = {
                 "directors": meta.get("directors", []),
@@ -1338,10 +1342,9 @@ def bulk_full_meta_update():
                             it["imdb"] = imdb_id_local
                         break
 
-            if fav_type == "show":
-                _mirror_list(st.session_state.get("favorite_series", []))
-            else:
-                _mirror_list(st.session_state.get("favorite_movies", []))
+            # Güncelleme: Hem izlenecekler hem izlenenler için session_state'i güncelle
+            _mirror_list(st.session_state.get("favorite_movies", []))
+            _mirror_list(st.session_state.get("favorite_series", []))
 
             # CSV cache
             try:
@@ -1691,6 +1694,10 @@ if query:
                         title=item.get("title"),
                         year=item.get("year"),
                     )
+                    # Limit cast list to first 9 names to optimize performance
+                    if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                        meta["cast"] = meta["cast"][:9]
+                    _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta.get('cast', []))} names")
                 else:
                     meta = {"directors": [], "writers": [], "cast": [], "genres": []}
             except Exception:
@@ -2166,6 +2173,10 @@ def show_favorites(fav_type, label, favorites=None):
                         title=fav.get("title"),
                         year=fav.get("year"),
                     )
+                    # Limit cast list to first 9 names to optimize performance
+                    if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                        meta["cast"] = meta["cast"][:9]
+                        _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta['cast'])} names (limit 9)")
                     _dbg_log(f"[DEBUG] FullMeta result for {fav.get('title')}: overview_len={len(meta.get('overview',''))}")
                     # Persist to Firestore
                     db.collection("favorites").document(fid).update({
@@ -2639,6 +2650,10 @@ elif fav_section == "🎬 İzlenenler":
                                 title=fav.get("title"),
                                 year=fav.get("year"),
                             )
+                            # Limit cast list to first 9 names to optimize performance
+                            if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                                meta["cast"] = meta["cast"][:9]
+                                _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta['cast'])} names (limit 9)")
                             db.collection("favorites").document(fid).update({
                                 "directors": meta.get("directors", []),
                                 "writers":   meta.get("writers", []),
@@ -2990,6 +3005,10 @@ elif fav_section == "🖤 Blacklist":
                         title=fav.get("title"),
                         year=fav.get("year"),
                     )
+                    # Limit cast list to first 9 names to optimize performance
+                    if isinstance(meta.get("cast"), list) and len(meta["cast"]) > 9:
+                        meta["cast"] = meta["cast"][:9]
+                        _dbg_log(f"[DEBUG] Cast list trimmed to {len(meta['cast'])} names (limit 9)")
                     db.collection("favorites").document(fid).update({
                         "directors": meta.get("directors", []),
                         "writers":   meta.get("writers", []),
