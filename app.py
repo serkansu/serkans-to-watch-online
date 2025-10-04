@@ -513,9 +513,9 @@ def fetch_full_meta(tmdb_id: str, media_type: str, imdb_id: str | None = None, t
     }
     # Eğer meta içinde overview boşsa TMDb'den gelen veriyi kullan
     if not meta.get("overview"):
-    overview_from_det = (det.get("overview") or "").strip()
-    if overview_from_det:
-        meta["overview"] = overview_from_det
+        overview_from_det = (det.get("overview") or "").strip()
+        if overview_from_det:
+            meta["overview"] = overview_from_det
     return meta
 # --- /seed_meta helpers ---
 def get_ratings(imdb_id):
