@@ -2095,6 +2095,20 @@ def show_favorites(fav_type, label, favorites=None):
                             "blacklistedBy": None,
                             "blacklistedAt": None,
                         })
+                        # 🔁 Eğer film "izleneceklerden" "izlenenlere" taşındıysa
+                        try:
+                            src_doc = db.collection("favorites").document(fid).get()
+                            if src_doc.exists:
+                                src_data = src_doc.to_dict()
+                                comments_data = src_data.get("comments", [])
+                                # Aynı ID'li eski kaydı "to_watch" listesinden sil
+                                db.collection("favorites").document(fid).update({
+                                    "status": "watched",
+                                    "comments": comments_data
+                                })
+                                _dbg_log(f"[SYNC] {fav.get('title')} moved to watched, {len(comments_data)} comments kept")
+                        except Exception as e:
+                            _dbg_log(f"[SYNC ERROR] Failed to sync watched movie: {e}")
                         # Update session_state
                         for item in (st.session_state["favorite_movies"] if fav_type == "movie" else st.session_state["favorite_series"]):
                             if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
