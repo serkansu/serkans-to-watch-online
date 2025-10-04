@@ -1828,21 +1828,19 @@ def show_favorites(fav_type, label, favorites=None):
                 else:
                     imdb_url = fav.get("imdb_url", "")
                 if poster_url:
-                    if imdb_url:
-                        st.markdown(
-                            f"<a href='{imdb_url}' target='_blank'>"
-                            f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
-                            "</a>",
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        if poster_url and poster_url.startswith("http"):
-                            st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
-                        else:
+                    if poster_url:
+                        if imdb_url:
                             st.markdown(
-                                f"<img src='https://placehold.co/120x180?text=No+Image' alt='No Poster' width='120'/>",
+                                f"<a href='{imdb_url}' target='_blank'>"
+                                f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
+                                "</a>",
                                 unsafe_allow_html=True
                             )
+                        else:
+                            if poster_url and poster_url.startswith("http"):
+                                st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                            else:
+                                st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
             overview_text = fav.get("overview") or ""
