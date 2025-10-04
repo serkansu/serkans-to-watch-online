@@ -2429,7 +2429,7 @@ elif fav_section == "🎬 İzlenenler":
                             )
                         else:
                             if poster_url and poster_url.startswith("http"):
-                            st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                                st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
                             else:
                                 st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
                 with cols[1]:
@@ -2833,10 +2833,10 @@ elif fav_section == "🖤 Blacklist":
                         unsafe_allow_html=True
                     )
                 else:
-                    if poster_url and poster_url.startswith("https://image.tmdb.org"):
-                        st.markdown(f"<img src='{poster_url}?refresh=true' width='120'/>", unsafe_allow_html=True)
+                    if poster_url and poster_url.startswith("http"):
+                        st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"<img src='{poster_url or 'https://via.placeholder.com/120x180?text=No+Image'}' width='120'/>", unsafe_allow_html=True)
+                        st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
 
         with cols[1]:
             imdb_display = f"{float(fav.get('imdbRating') or 0):.1f}" if fav.get("imdbRating") not in (None, "", "N/A") else "N/A"
