@@ -1865,17 +1865,15 @@ def show_favorites(fav_type, label, favorites=None):
                 imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
                 imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (fav.get("imdb_url", "") or "")
 
-                # Build HTML once; avoid deep nesting to prevent indentation issues
                 html = ""
-                if poster_url:
-                    if imdb_url:
-                        html = (
-                            f"<a href='{imdb_url}' target='_blank'>"
-                            f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
-                            "</a>"
-                        )
-                    elif poster_url.startswith("http"):
-                        html = f"<img src='{poster_url}' width='120'/>"
+                if poster_url and imdb_url:
+                    html = (
+                        f"<a href='{imdb_url}' target='_blank'>"
+                        f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
+                        "</a>"
+                    )
+                elif poster_url:
+                    html = f"<img src='{poster_url}' width='120'/>"
 
                 if html:
                     st.markdown(html, unsafe_allow_html=True)
@@ -2514,14 +2512,15 @@ elif fav_section == "🎬 İzlenenler":
                                 "</a>",
                                 unsafe_allow_html=True
                             )
-                        else:
-                            if poster_url and poster_url.startswith("http"):
+                    else:
+                        if poster_url and poster_url.startswith("http"):
                             st.markdown(
                                 f"<img src='{poster_url}' width='120'/>",
                                 unsafe_allow_html=True
                             )
-                            else:
-                                st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+                        else:
+                            st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+
                 with cols[1]:
                     emoji = fav.get("watchedEmoji") or "😐"
                     title_str = f"**{idx}. {fav.get('title')} ({fav.get('year')})**"
