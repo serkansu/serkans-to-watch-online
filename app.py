@@ -1778,17 +1778,16 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
-    # 🔎 Aktif sekmeye göre filtreleme
-    if label.startswith("📌"):  # İzlenecekler
-        favorites = [x for x in favorites if (x.get("status") in (None, "", "to_watch"))]
-    elif label.startswith("🎬"):  # İzlenenler
-        favorites = [x for x in favorites if (x.get("status") == "watched")]
     # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
-    # 📦 Firestore'dan veriyi al: İzlenecekler VE İzlenenler birlikte gelsin
-    firestore_favorites = [
-    doc.to_dict() for doc in db.collection("favorites").where("type", "==", fav_type).stream()
-    if doc.to_dict().get("status") in ("to_watch", None, "")
-    ]
+    # 📦 Firestore'dan veriyi al: aktif sekmeye göre status filtresi uygula
+    q = db.collection("favorites").where("type", "==", fav_type)
+    raw_docs = list(q.stream())
+    if label.startswith("📌"):  # İzlenecekler
+        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") in (None, "", "to_watch"))]
+    elif label.startswith("🎬"):  # İzlenenler
+        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") == "watched")]
+    else:  # 🖤 Blacklist
+        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") == "blacklist")]
     favorites = firestore_favorites
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
