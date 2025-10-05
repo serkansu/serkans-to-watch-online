@@ -1864,30 +1864,23 @@ def show_favorites(fav_type, label, favorites=None):
                 poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
                 imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
                 imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (fav.get("imdb_url", "") or "")
+
+                # Build HTML once; avoid deep nesting to prevent indentation issues
+                html = ""
                 if poster_url:
                     if imdb_url:
-                        st.markdown(
+                        html = (
                             f"<a href='{imdb_url}' target='_blank'>"
                             f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
-                            "</a>",
-                            unsafe_allow_html=True
+                            "</a>"
                         )
-                    else:
-                        if poster_url and poster_url.startswith("http"):
-                            st.markdown(
-                                f"<img src='{poster_url}' width='120'/>",
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+                    elif poster_url.startswith("http"):
+                        html = f"<img src='{poster_url}' width='120'/>"
+
+                if html:
+                    st.markdown(html, unsafe_allow_html=True)
                 else:
-                    if poster_url and poster_url.startswith("http"):
-                        st.markdown(
-                            f"<img src='{poster_url}' width='120'/>",
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+                    st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
             # --- CineSelect Rating: always editable in watched list ---
             current_cs = fav.get('cineselectRating') or 0
