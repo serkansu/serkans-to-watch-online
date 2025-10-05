@@ -1838,7 +1838,7 @@ def show_favorites(fav_type, label, favorites=None):
                             )
                         else:
                             if poster_url and poster_url.startswith("http"):
-                                st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                                st.image(poster_url, width=120)
                             else:
                                 st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
@@ -2221,6 +2221,35 @@ def show_favorites(fav_type, label, favorites=None):
                     fav["genres"]    = meta.get("genres", [])
                     fav["overview"]  = meta_overview
                     st.rerun()
+
+                # --- CS CineSelect Rating edit (same as İzlenecekler) ---
+                if st.session_state.get(f"edit_mode_{fid}", False):
+                    i_key = f"input_{fid}"
+                    current = _clamp_cs(fav.get("cineselectRating", 50))
+                    st.number_input(
+                        "🎯 CS:",
+                        min_value=1,
+                        max_value=150,
+                        value=st.session_state.get(i_key, current),
+                        step=1,
+                        key=i_key
+                    )
+                    cols_edit = st.columns([1,2])
+                    with cols_edit[0]:
+                        if st.button("✅ Kaydet", key=f"save_{fid}"):
+                            new_val = _clamp_cs(st.session_state.get(i_key, current))
+                            db.collection("favorites").document(fid).update({"cineselectRating": new_val})
+                            st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
+                            _safe_set_state(f"edit_mode_{fid}", False)
+                            st.rerun()
+                    with cols_edit[1]:
+                        if st.button("❌ İptal", key=f"cancel_{fid}"):
+                            _safe_set_state(f"edit_mode_{fid}", False)
+                            st.rerun()
+                else:
+                    if st.button("✏️ CS puanını düzenle", key=f"edit_button_{fid}"):
+                        _safe_set_state(f"edit_mode_{fid}", True)
+                        st.rerun()
                 if st.button("✏️", key=f"edit_{fid}"):
                     _safe_set_state(f"edit_mode_{fid}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
