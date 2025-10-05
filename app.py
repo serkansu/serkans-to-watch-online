@@ -1794,35 +1794,29 @@ def show_favorites(fav_type, label, favorites=None):
         _dbg_log(f"[DEBUG] Firestore status summary: {status_counts}")
     except Exception as e:
         _dbg_log(f"[DEBUG_ERR] Firestore test read failed → {e}")
-    # 📦 Firestore'dan veriyi al: aktif sekmeye göre status filtresi uygula
-    # Film ve dizi türlerini radio seçiminden gelen fav_type'a göre ayır
-    if fav_type == "movie":
-        q = db.collection("favorites").where("type", "in", ["movie", "film"])
-    else:
-        q = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"])
-    raw_docs = list(q.stream())
 
-    # Durum (status) değerini normalize et ve uygun olanları filtrele
-    if label.startswith("📌"):  # İzlenecekler
+    # 📦 Firestore'dan veriyi al (app-3.py sürümündeki mantıkla aynı)
+    firestore_favorites = [
+        doc.to_dict()
+        for doc in db.collection("favorites").stream()
+        if doc.to_dict().get("status") in (None, "", "to_watch")
+    ]
+
+    if label.startswith("🎬"):  # İzlenenler
         firestore_favorites = [
             doc.to_dict()
-            for doc in raw_docs
-            if (str(doc.to_dict().get("status") or "").strip().lower() in ("", "to_watch"))
+            for doc in db.collection("favorites").stream()
+            if doc.to_dict().get("status") == "watched"
         ]
-    elif label.startswith("🎬"):  # İzlenenler
+    elif label.startswith("🖤"):  # Blacklist
         firestore_favorites = [
             doc.to_dict()
-            for doc in raw_docs
-            if (str(doc.to_dict().get("status") or "").strip().lower() == "watched")
-        ]
-    else:  # 🖤 Blacklist
-        firestore_favorites = [
-            doc.to_dict()
-            for doc in raw_docs
-            if (str(doc.to_dict().get("status") or "").strip().lower() == "blacklist")
+            for doc in db.collection("favorites").stream()
+            if doc.to_dict().get("status") == "blacklist"
         ]
 
     favorites = firestore_favorites
+    _dbg_log(f"[DEBUG] Listed {len(favorites)} items for {fav_type} / {label}")
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
     # --- Incremental scroll for Izlenecekler ---
