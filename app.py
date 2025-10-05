@@ -1,3 +1,17 @@
+import re as _re_poster
+
+# Poster URL normalization utility
+def _normalize_poster_url(p: str | None) -> str:
+    if not p:
+        return ""
+    s = str(p).strip()
+    if "<img" in s or "&lt;img" in s:
+        m = _re_poster.search(r"src=['\"]([^'\"]+)['\"]", s)
+        if m:
+            s = m.group(1).strip()
+    if s.startswith("/"):
+        return f"https://image.tmdb.org/t/p/w500{s}"
+    return s
 from tmdb import search_movie, search_tv, search_by_actor
 from omdb import get_ratings
 import csv
@@ -1601,7 +1615,10 @@ if query:
                             unsafe_allow_html=True
                         )
                     else:
-                        st.image(poster_url if poster_url.startswith("http") else "https://via.placeholder.com/180x270?text=No+Image", width=180)
+                        st.markdown(
+                            f"<img src='{poster_url if poster_url.startswith('http') else 'https://via.placeholder.com/180x270?text=No+Image'}' width='180'/>",
+                            unsafe_allow_html=True
+                        )
 
             # Checkbox ile seçim (tekli ekleme butonunu kaldırdık)
             checkbox_label = f"{item['title']} ({item.get('year','?')})"
@@ -1856,28 +1873,25 @@ def show_favorites(fav_type, label, favorites=None):
                             unsafe_allow_html=True
                         )
                     else:
-                        st.image(poster_url if poster_url.startswith("http") else "https://via.placeholder.com/120x180?text=No+Image", width=120)
+                        st.markdown(
+                            f"<img src='{poster_url if poster_url.startswith('http') else 'https://via.placeholder.com/120x180?text=No+Image'}' width='120'/>",
+                            unsafe_allow_html=True
+                        )
                 else:
                     st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
             # --- CineSelect Rating: editable for watched items ---
-            cs_rating_display = None
-            if fav.get("status") == "watched":
-                # Only allow editing for watched items
-                try:
-                    cs_current = fav.get('cineselectRating')
-                    cs_val = int(cs_current) if cs_current not in (None, "", "N/A") else 0
-                except Exception:
-                    cs_val = 0
+            # Treat everything except "to_watch" and "blacklist" as watched for CS editing
+            if fav.get("status") not in ("to_watch", "blacklist", None, ""):
+                current_cs = fav.get('cineselectRating') or 0
                 new_cs = st.number_input(
                     "CS",
-                    min_value=1,
+                    min_value=0,
                     max_value=1000,
-                    value=cs_val,
+                    value=int(current_cs),
                     key=f"edit_cs_{fid}"
                 )
-                # Only update if changed
-                if new_cs != fav.get('cineselectRating'):
+                if new_cs != current_cs:
                     try:
                         db.collection("favorites").document(str(fid)).update({"cineselectRating": new_cs})
                         fav["cineselectRating"] = new_cs
@@ -2487,7 +2501,7 @@ elif fav_section == "🎬 İzlenenler":
                 rt_display = f"{rt_num}%" if rt_num > 0 else "N/A"
                 cols = st.columns([1, 5, 1])
                 with cols[0]:
-                    poster_url = fav.get("Poster") or fav.get("poster_path") or fav.get("poster")
+                    poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
                     imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
                     if imdb_id:
                         imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
@@ -2895,7 +2909,7 @@ elif fav_section == "🖤 Blacklist":
     for idx, fav in enumerate(bl_items, start=1):
         cols = st.columns([1, 5, 1])
         with cols[0]:
-            poster_url = fav.get("Poster") or fav.get("poster_path") or fav.get("poster")
+            poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
             imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
             imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (fav.get("imdb_url") or "")
             if poster_url:
