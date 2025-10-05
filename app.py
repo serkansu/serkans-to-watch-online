@@ -1794,16 +1794,34 @@ def show_favorites(fav_type, label, favorites=None):
         _dbg_log(f"[DEBUG] Firestore status summary: {status_counts}")
     except Exception as e:
         _dbg_log(f"[DEBUG_ERR] Firestore test read failed → {e}")
-    # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
     # 📦 Firestore'dan veriyi al: aktif sekmeye göre status filtresi uygula
-    q = db.collection("favorites").where("type", "==", fav_type)
+    # Film ve dizi türlerini radio seçiminden gelen fav_type'a göre ayır
+    if fav_type == "movie":
+        q = db.collection("favorites").where("type", "in", ["movie", "film"])
+    else:
+        q = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"])
     raw_docs = list(q.stream())
+
+    # Durum (status) değerini normalize et ve uygun olanları filtrele
     if label.startswith("📌"):  # İzlenecekler
-        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") in (None, "", "to_watch"))]
+        firestore_favorites = [
+            doc.to_dict()
+            for doc in raw_docs
+            if (str(doc.to_dict().get("status") or "").strip().lower() in ("", "to_watch"))
+        ]
     elif label.startswith("🎬"):  # İzlenenler
-        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") == "watched")]
+        firestore_favorites = [
+            doc.to_dict()
+            for doc in raw_docs
+            if (str(doc.to_dict().get("status") or "").strip().lower() == "watched")
+        ]
     else:  # 🖤 Blacklist
-        firestore_favorites = [doc.to_dict() for doc in raw_docs if (doc.to_dict().get("status") == "blacklist")]
+        firestore_favorites = [
+            doc.to_dict()
+            for doc in raw_docs
+            if (str(doc.to_dict().get("status") or "").strip().lower() == "blacklist")
+        ]
+
     favorites = firestore_favorites
     favorites = sorted(favorites, key=get_sort_key, reverse=True)
 
