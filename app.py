@@ -1880,27 +1880,23 @@ def show_favorites(fav_type, label, favorites=None):
                 else:
                     st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
-            # --- CineSelect Rating: editable for watched items ---
-            # Treat everything except "to_watch" and "blacklist" as watched for CS editing
-            if fav.get("status") not in ("to_watch", "blacklist", None, ""):
-                current_cs = fav.get('cineselectRating') or 0
-                new_cs = st.number_input(
-                    "CS",
-                    min_value=0,
-                    max_value=1000,
-                    value=int(current_cs),
-                    key=f"edit_cs_{fid}"
-                )
-                if new_cs != current_cs:
-                    try:
-                        db.collection("favorites").document(str(fid)).update({"cineselectRating": new_cs})
-                        fav["cineselectRating"] = new_cs
-                        st.success("CS rating updated!")
-                    except Exception as e:
-                        st.error(f"Failed to update CS rating: {e}")
-                cs_rating_display = f"{new_cs}"
-            else:
-                cs_rating_display = fav.get('cineselectRating', 'N/A')
+            # --- CineSelect Rating: always editable in watched list ---
+            current_cs = fav.get('cineselectRating') or 0
+            new_cs = st.number_input(
+                "CS",
+                min_value=0,
+                max_value=1000,
+                value=int(current_cs),
+                key=f"edit_cs_{fid}"
+            )
+            if new_cs != current_cs:
+                try:
+                    db.collection("favorites").document(str(fid)).update({"cineselectRating": new_cs})
+                    fav["cineselectRating"] = new_cs
+                    st.success("CS rating updated!")
+                except Exception as e:
+                    st.error(f"Failed to update CS rating: {e}")
+            cs_rating_display = f"{new_cs}"
             st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {cs_rating_display}")
             overview_text = fav.get("overview") or ""
             if overview_text:
@@ -2502,6 +2498,7 @@ elif fav_section == "🎬 İzlenenler":
                 cols = st.columns([1, 5, 1])
                 with cols[0]:
                     poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
+                    print("Poster URL debug:", poster_url)
                     imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
                     if imdb_id:
                         imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
@@ -2517,7 +2514,10 @@ elif fav_section == "🎬 İzlenenler":
                             )
                         else:
                             if poster_url and poster_url.startswith("http"):
-                                st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                            st.markdown(
+                                f"<img src='{poster_url}' width='120'/>",
+                                unsafe_allow_html=True
+                            )
                             else:
                                 st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
                 with cols[1]:
@@ -2910,6 +2910,7 @@ elif fav_section == "🖤 Blacklist":
         cols = st.columns([1, 5, 1])
         with cols[0]:
             poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
+            print("Poster URL debug:", poster_url)
             imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
             imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (fav.get("imdb_url") or "")
             if poster_url:
@@ -2922,7 +2923,10 @@ elif fav_section == "🖤 Blacklist":
                     )
                 else:
                     if poster_url and poster_url.startswith("http"):
-                        st.markdown(f"<img src='{poster_url}' width='120'/>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<img src='{poster_url}' width='120'/>",
+                        unsafe_allow_html=True
+                    )
                     else:
                         st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
 
