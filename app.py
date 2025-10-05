@@ -1881,7 +1881,13 @@ def show_favorites(fav_type, label, favorites=None):
                         else:
                             st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
                 else:
-                    st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+                    if poster_url and poster_url.startswith("http"):
+                        st.markdown(
+                            f"<img src='{poster_url}' width='120'/>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
             # --- CineSelect Rating: always editable in watched list ---
             current_cs = fav.get('cineselectRating') or 0
