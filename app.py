@@ -2671,6 +2671,34 @@ elif fav_section == "🎬 İzlenenler":
                                 st.error(f"❌ IMDb ID bulunamadı: {fav.get('title')}")
 
                         if st.button("🧠 Full Meta", key=f"watched_fullmeta_{fid}"):
+                        # --- CineSelect Rating Edit (added parity with To-Watch section) ---
+                        if st.button("✏️", key=f"watched_edit_{fid}"):
+                            _safe_set_state(f"watched_edit_mode_{fid}", True)
+
+                        if st.session_state.get(f"watched_edit_mode_{fid}", False):
+                            i_key = f"watched_input_{fid}"
+                            current = _clamp_cs(fav.get("cineselectRating", 50))
+                            st.number_input(
+                                "🎯 CS:",
+                                min_value=1,
+                                max_value=150,
+                                value=st.session_state.get(i_key, current),
+                                step=1,
+                                key=i_key
+                            )
+                            save_col, cancel_col = st.columns([1, 1])
+                            with save_col:
+                                if st.button("✅ Kaydet", key=f"watched_save_{fid}"):
+                                    new_val = _clamp_cs(st.session_state.get(i_key, current))
+                                    db.collection("favorites").document(fid).update({"cineselectRating": new_val})
+                                    fav["cineselectRating"] = new_val
+                                    st.success(f"✅ {fav['title']} güncellendi (CS={new_val}).")
+                                    _safe_set_state(f"watched_edit_mode_{fid}", False)
+                                    st.rerun()
+                            with cancel_col:
+                                if st.button("❌ İptal", key=f"watched_cancel_{fid}"):
+                                    _safe_set_state(f"watched_edit_mode_{fid}", False)
+                                    st.rerun()
                             _dbg_log(f"[DEBUG] Calling fetch_full_meta tmdb_id={str(fid).replace('tmdb', '')}")
                             imdb_id_local = fav.get("imdb")
                             if not imdb_id_local:
