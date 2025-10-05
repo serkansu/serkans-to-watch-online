@@ -1795,25 +1795,32 @@ def show_favorites(fav_type, label, favorites=None):
     except Exception as e:
         _dbg_log(f"[DEBUG_ERR] Firestore test read failed → {e}")
 
-    # 📦 Firestore'dan veriyi al (app-3.py sürümündeki mantıkla aynı)
-    firestore_favorites = [
-        doc.to_dict()
-        for doc in db.collection("favorites").stream()
-        if doc.to_dict().get("status") in (None, "", "to_watch")
-    ]
+    # 📦 Firestore'dan veriyi al (film / dizi ayrımı dahil)
+    if fav_type == "movie":
+        base_query = db.collection("favorites").where("type", "in", ["movie", "film"])
+    else:
+        base_query = db.collection("favorites").where("type", "in", ["show", "series", "tv", "tvshow"])
 
-    if label.startswith("🎬"):  # İzlenenler
+    if label.startswith("📌"):  # İzlenecekler
         firestore_favorites = [
             doc.to_dict()
-            for doc in db.collection("favorites").stream()
+            for doc in base_query.stream()
+            if doc.to_dict().get("status") in (None, "", "to_watch")
+        ]
+    elif label.startswith("🎬"):  # İzlenenler
+        firestore_favorites = [
+            doc.to_dict()
+            for doc in base_query.stream()
             if doc.to_dict().get("status") == "watched"
         ]
     elif label.startswith("🖤"):  # Blacklist
         firestore_favorites = [
             doc.to_dict()
-            for doc in db.collection("favorites").stream()
+            for doc in base_query.stream()
             if doc.to_dict().get("status") == "blacklist"
         ]
+    else:
+        firestore_favorites = [doc.to_dict() for doc in base_query.stream()]
 
     favorites = firestore_favorites
     _dbg_log(f"[DEBUG] Listed {len(favorites)} items for {fav_type} / {label}")
