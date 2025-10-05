@@ -123,8 +123,32 @@ def _strip_non_export_fields(item: dict) -> dict:
     return cleaned
 # --- /JSON export helpers ---
 # --- helpers: normalize title for equality checks ---
+# --- helpers: normalize title for equality checks ---
 def _norm_title(t: str) -> str:
     return (t or "").strip().lower()
+
+# --- Poster URL normalizer (handles TMDb poster_path and accidental <img> strings) ---
+import re as _re_poster
+
+def _normalize_poster_url(p: str | None) -> str:
+    """
+    Returns a fully qualified poster URL.
+    - If p is a TMDb poster_path like '/abc123.jpg', prefixes the TMDb base.
+    - If p accidentally contains an <img ... src='...'> HTML string, extracts the src.
+    - Otherwise returns p unchanged.
+    """
+    if not p:
+        return ""
+    s = str(p).strip()
+    # If an <img ...> tag string was stored, extract the src attribute
+    if "<img" in s or "&lt;img" in s:
+        m = _re_poster.search(r"src=['\"]([^'\"]+)['\"]", s)
+        if m:
+            s = m.group(1).strip()
+    # If it's a bare TMDb poster_path, prefix full base
+    if s.startswith("/"):
+        return f"https://image.tmdb.org/t/p/w500{s}"
+    return s
 # ---------- Sorting helpers for Streamio export ----------
 ROMAN_MAP = {
     "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
@@ -1546,10 +1570,7 @@ if query:
             st.divider()
             # 🔗 Normalize poster and ensure clickable IMDb link for search results
             if show_posters:
-                poster_url = item.get("Poster") or item.get("poster") or item.get("poster_path") or ""
-                # If we got a raw TMDb /poster_path, prefix the full TMDb image base
-                if poster_url.startswith("/"):
-                    poster_url = f"https://image.tmdb.org/t/p/w500{poster_url}"
+                poster_url = _normalize_poster_url(item.get("Poster") or item.get("poster") or item.get("poster_path") or "")
 
                 # Prefer existing IDs; if not present, resolve via TMDb external_ids
                 imdb_id = item.get("imdbID") or item.get("imdb_id") or item.get("imdb") or ""
@@ -1580,7 +1601,7 @@ if query:
                             unsafe_allow_html=True
                         )
                     else:
-                        st.image(poster_url, width=180)
+                        st.image(poster_url if poster_url.startswith("http") else "https://via.placeholder.com/180x270?text=No+Image", width=180)
 
             # Checkbox ile seçim (tekli ekleme butonunu kaldırdık)
             checkbox_label = f"{item['title']} ({item.get('year','?')})"
@@ -1717,12 +1738,14 @@ if query:
             _prev_data = _prev.to_dict() if _prev.exists else {}
             _added_at = _prev_data.get("addedAt") or firestore.SERVER_TIMESTAMP
 
+            # Normalize poster for persistent storage (favor a fully qualified URL)
+            poster_norm = _normalize_poster_url(item.get("poster") or item.get("Poster") or item.get("poster_path"))
             payload = {
                 "id": item["id"],
                 "title": item["title"],
                 "year": item.get("year"),
                 "imdb": imdb_id,
-                "poster": item.get("poster"),
+                "poster": poster_norm,
                 "imdbRating": imdb_rating,
                 "rt": rt_score,
                 "cineselectRating": cs_score,
@@ -1820,29 +1843,51 @@ def show_favorites(fav_type, label, favorites=None):
         rt_display = f"{_rt_val_num}%" if _rt_val_num > 0 else "N/A"
         cols = st.columns([1, 5, 1])
         with cols[0]:
-            if show_posters and fav.get("poster"):
-                poster_url = fav.get("Poster") or fav.get("poster_path") or fav.get("poster")
+            if show_posters:
+                poster_url = _normalize_poster_url(fav.get("Poster") or fav.get("poster") or fav.get("poster_path"))
                 imdb_id = fav.get("imdbID") or fav.get("imdb_id") or fav.get("imdb") or ""
-                if imdb_id:
-                    imdb_url = f"https://www.imdb.com/title/{imdb_id}/"
-                else:
-                    imdb_url = fav.get("imdb_url", "")
+                imdb_url = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else (fav.get("imdb_url", "") or "")
                 if poster_url:
-                    if poster_url:
-                        if imdb_url:
-                            st.markdown(
-                                f"<a href='{imdb_url}' target='_blank'>"
-                                f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
-                                "</a>",
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            if poster_url and poster_url.startswith("http"):
-                                st.image(poster_url, width=120)
-                            else:
-                                st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
+                    if imdb_url:
+                        st.markdown(
+                            f"<a href='{imdb_url}' target='_blank'>"
+                            f"<img src='{poster_url}' alt='{fav.get('Title', fav.get('title', ''))}' width='120'/>"
+                            "</a>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.image(poster_url if poster_url.startswith("http") else "https://via.placeholder.com/120x180?text=No+Image", width=120)
+                else:
+                    st.image("https://via.placeholder.com/120x180?text=No+Image", width=120)
         with cols[1]:
-            st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {fav.get('cineselectRating', 'N/A')}")
+            # --- CineSelect Rating: editable for watched items ---
+            cs_rating_display = None
+            if fav.get("status") == "watched":
+                # Only allow editing for watched items
+                try:
+                    cs_current = fav.get('cineselectRating')
+                    cs_val = int(cs_current) if cs_current not in (None, "", "N/A") else 0
+                except Exception:
+                    cs_val = 0
+                new_cs = st.number_input(
+                    "CS",
+                    min_value=1,
+                    max_value=1000,
+                    value=cs_val,
+                    key=f"edit_cs_{fid}"
+                )
+                # Only update if changed
+                if new_cs != fav.get('cineselectRating'):
+                    try:
+                        db.collection("favorites").document(str(fid)).update({"cineselectRating": new_cs})
+                        fav["cineselectRating"] = new_cs
+                        st.success("CS rating updated!")
+                    except Exception as e:
+                        st.error(f"Failed to update CS rating: {e}")
+                cs_rating_display = f"{new_cs}"
+            else:
+                cs_rating_display = fav.get('cineselectRating', 'N/A')
+            st.markdown(f"**{idx+1}. {fav['title']} ({fav['year']})** | ⭐ IMDb: {imdb_display} | 🍅 RT: {rt_display} | 🎯 CS: {cs_rating_display}")
             overview_text = fav.get("overview") or ""
             if overview_text:
                 st.markdown(
