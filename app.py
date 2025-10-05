@@ -1778,6 +1778,22 @@ sort_option = st.selectbox(
 
 
 def show_favorites(fav_type, label, favorites=None):
+    _dbg_log(f"[DEBUG] show_favorites called → fav_type={fav_type}, label={label}")
+
+    # --- Firestore'dan mevcut türleri ve durumları oku (ham veri) ---
+    try:
+        raw_test = [doc.to_dict() for doc in db.collection('favorites').stream()]
+        type_counts = {}
+        status_counts = {}
+        for d in raw_test:
+            t = (d.get('type') or '').lower().strip()
+            s = (d.get('status') or '').lower().strip()
+            type_counts[t] = type_counts.get(t, 0) + 1
+            status_counts[s] = status_counts.get(s, 0) + 1
+        _dbg_log(f"[DEBUG] Firestore type summary: {type_counts}")
+        _dbg_log(f"[DEBUG] Firestore status summary: {status_counts}")
+    except Exception as e:
+        _dbg_log(f"[DEBUG_ERR] Firestore test read failed → {e}")
     # Her zaman Firestore'dan oku; sadece Firestore'dan gelen veriyi kullan
     # 📦 Firestore'dan veriyi al: aktif sekmeye göre status filtresi uygula
     q = db.collection("favorites").where("type", "==", fav_type)
