@@ -1953,7 +1953,7 @@ def show_favorites(fav_type, label, favorites=None):
                     date = c.get("date", "")
                     row_cols = st.columns([8, 1, 1])
                     with row_cols[0]:
-                        st.write(f"{text} — ({who}) • {date}")
+                        st.markdown(f"💬 {text} — ({who}) • {date}", unsafe_allow_html=True)
                     with row_cols[1]:
                         edit_mode_key = f"to_watch_comment_edit_mode_{fid}_{c_idx}"
                         if st.button("✏️", key=f"to_watch_comment_edit_{fid}_{c_idx}"):
@@ -2036,51 +2036,51 @@ def show_favorites(fav_type, label, favorites=None):
                     _safe_set_state(comment_wb_key, "ss")
                     _safe_set_state(clear_flag_key, False)
 
-                with st.expander("💬 Yorum Ekle", expanded=False):
-                    # Prepare default states only if missing (no conflicting defaults)
-                    if comment_key not in st.session_state:
-                        _safe_set_state(comment_key, "")
-                    if comment_wb_key not in st.session_state:
-                        _safe_set_state(comment_wb_key, "ss")
+                    with st.expander("💬 Yorum Ekle", expanded=False):
+                        # Prepare default states only if missing (no conflicting defaults)
+                        if comment_key not in st.session_state:
+                            _safe_set_state(comment_key, "")
+                        if comment_wb_key not in st.session_state:
+                            _safe_set_state(comment_wb_key, "ss")
 
-                    comment_text = st.text_area(
-                        "Yorum ekle",
-                        key=comment_key,
-                        height=80,
-                        label_visibility="visible"
-                    )
-                    # NOTE: don't pass 'index=' to avoid "created with a default value" warning.
-                    comment_wb_val = st.selectbox(
-                        "Yorumu kim yaptı?",
-                        ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
-                        key=comment_wb_key,
-                        label_visibility="visible"
-                    )
-                    if st.button("💬 Comment yap", key=f"to_watch_comment_add_btn_{fid}"):
-                        now_str = format_turkish_datetime(_dt.now())
-                        comment_full = comment_text.strip()
-                        who_val = st.session_state.get(comment_wb_key, "")
-                        if comment_full and who_val:
-                            new_comment = {
-                                "text": comment_full,
-                                "watchedBy": who_val,
-                                "date": now_str,
-                            }
-                            new_comments = (fav.get("comments") or []) + [new_comment]
-                            # 1) Firestore update
-                            db.collection("favorites").document(fid).update({"comments": new_comments})
-                            # 2) Update on the local item
-                            fav["comments"] = new_comments
-                            # 3) Mirror into session_state list
-                            for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
-                                         else st.session_state["favorite_series"]):
-                                if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
-                                    item["comments"] = new_comments
-                                    break
-                            # 4) Clear inputs next run without conflicting defaults
-                            _safe_set_state(clear_flag_key, True)
-                            st.success("💬 Yorum kaydedildi!")
-                            st.rerun()
+                        comment_text = st.text_area(
+                            "Yorum ekle",
+                            key=comment_key,
+                            height=80,
+                            label_visibility="visible"
+                        )
+                        # NOTE: don't pass 'index=' to avoid "created with a default value" warning.
+                        comment_wb_val = st.selectbox(
+                            "Yorumu kim yaptı?",
+                            ["öz", "ss", "öz❤️ss", "ds", "gs", "s❤️d", "s❤️g"],
+                            key=comment_wb_key,
+                            label_visibility="visible"
+                        )
+                        if st.button("💬 Yorum Ekle", key=f"add_comment_{fid}_{idx}"):
+                            now_str = format_turkish_datetime(_dt.now())
+                            comment_full = comment_text.strip()
+                            who_val = st.session_state.get(comment_wb_key, "")
+                            if comment_full and who_val:
+                                new_comment = {
+                                    "text": comment_full,
+                                    "watchedBy": who_val,
+                                    "date": now_str,
+                                }
+                                new_comments = (fav.get("comments") or []) + [new_comment]
+                                # 1) Firestore update
+                                db.collection("favorites").document(fid).update({"comments": new_comments})
+                                # 2) Update on the local item
+                                fav["comments"] = new_comments
+                                # 3) Mirror into session_state list
+                                for item in (st.session_state["favorite_movies"] if (fav.get("type") or "movie") == "movie"
+                                             else st.session_state["favorite_series"]):
+                                    if (item.get("id") or item.get("imdbID") or item.get("tmdb_id") or item.get("key")) == fid:
+                                        item["comments"] = new_comments
+                                        break
+                                # 4) Clear inputs next run without conflicting defaults
+                                _safe_set_state(clear_flag_key, True)
+                                st.success("💬 Yorum kaydedildi!")
+                                st.rerun()
         with cols[2]:
             with st.expander("✨ Options"):
                 # --- (Comment edit/delete UI is now inline under the movie details, not in Options expander) ---
@@ -2258,7 +2258,7 @@ def show_favorites(fav_type, label, favorites=None):
                     fav["genres"]    = meta.get("genres", [])
                     fav["overview"]  = meta_overview
                     st.rerun()
-                if st.button("✏️", key=f"edit_{fid}"):
+                if st.button("✏️ Yorum Düzenle", key=f"edit_comment_{fid}_{idx}"):
                     _safe_set_state(f"edit_mode_{fid}", True)
                 # PIN FIRST: handle "Başa tuttur" BEFORE rendering input so it reflects new value immediately
                 pin_now = st.button("📌 Başa tuttur", key=f"pin_{fid}")
