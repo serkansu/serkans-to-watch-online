@@ -1942,6 +1942,9 @@ def show_favorites(fav_type, label, favorites=None):
                 from datetime import datetime as _dt
                 comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
 
+                # Insert fid definition here for İzlenecekler comments
+                fid = str(fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or "")
+
                 st.markdown(f"**💬 Yorumlar ({len(comments_sorted)})**")
 
                 for c_idx, c in enumerate(comments_sorted):
@@ -2533,6 +2536,10 @@ elif fav_section == "🎬 İzlenenler":
                     comments_sorted = sorted(comments, key=lambda c: parse_turkish_or_iso_date(c.get("date")), reverse=True)
                     # --- Watched Yorumlar: fid tanımı ve id kullanımı ---
                     fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
+
+                    # 💬 Watched comment header and count
+                    st.markdown(f"**💬 Yorumlar ({len(comments_sorted)})**")
+
                     for c_idx, c in enumerate(comments_sorted):
                         text = c.get("text", "")
                         who = c.get("watchedBy", "")
