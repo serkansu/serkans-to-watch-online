@@ -1838,7 +1838,7 @@ def show_favorites(fav_type, label, favorites=None):
     st.markdown(f"### 📁 {label}")
     for idx, fav in enumerate(display_favorites):
         # Güvenli kimlik: id, imdbID, tmdb_id, key
-        fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key")
+        fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or str(fav.get("title")).replace(" ", "_")
         if not fid:
             fid = f"unknown_{idx}"
         imdb_display = (
