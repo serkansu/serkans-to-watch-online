@@ -1839,17 +1839,43 @@ def show_favorites(fav_type, label, favorites=None):
     for idx, fav in enumerate(display_favorites):
         # Güvenli kimlik: id, imdbID, tmdb_id, key
         fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or str(fav.get("title")).replace(" ", "_")
-        # --- To Watch Yorumlar
+        # --- To Watch Yorumlar (geliştirilmiş)
         fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or str(fav.get("title")).replace(" ", "_")
 
-        st.markdown("## 💬 Yorum Ekle")
-        new_comment = st.text_area("Yeni Yorum", key=f"add_comment_text_{fid}")
+        st.markdown("### 💬 Yorumlar")
+        comments_ref = db.collection("favorites").document(fid).collection("comments")
+        comments = list(comments_ref.stream())
+        comments_sorted = sorted([c.to_dict() for c in comments], key=lambda x: x.get("date", ""), reverse=True)
+
+        for c_idx, c in enumerate(comments_sorted):
+            text = c.get("text", "")
+            who = c.get("watchedBy", "")
+            date = c.get("date", "")
+            row_cols = st.columns([8, 1, 1])
+            with row_cols[0]:
+                st.write(f"💭 {text} — ({who}) • {date}")
+            with row_cols[1]:
+                if st.button("✏️", key=f"edit_to_watch_comment_{fid}_{c_idx}"):
+                    _safe_set_state(f"to_watch_comment_edit_mode_{fid}_{c_idx}", True)
+                    st.rerun()
+            with row_cols[2]:
+                if st.button("🗑️", key=f"delete_to_watch_comment_{fid}_{c_idx}"):
+                    db.collection("favorites").document(fid).collection("comments").document(str(c_idx)).delete()
+                    st.rerun()
+
+        # Yeni yorum ekleme
+        st.markdown("### ➕ Yeni Yorum Ekle")
+        comment_col1, comment_col2 = st.columns([4, 1])
+        with comment_col1:
+            new_comment = st.text_input("Yorum Yaz", key=f"add_comment_text_{fid}")
+        with comment_col2:
+            who = st.selectbox("Kimden", ["öz", "ss", "ds", "gs", "n/w"], key=f"who_to_watch_{fid}")
+
         if st.button("💭 Yorum Ekle", key=f"add_comment_{fid}"):
             if new_comment.strip():
-                comments_ref = db.collection("favorites").document(fid).collection("comments")
                 comments_ref.add({
                     "text": new_comment.strip(),
-                    "watchedBy": "ss",
+                    "watchedBy": who,
                     "date": format_turkish_datetime(datetime.now())
                 })
                 st.success("✅ Yorum eklendi!")
