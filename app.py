@@ -1839,8 +1839,23 @@ def show_favorites(fav_type, label, favorites=None):
     for idx, fav in enumerate(display_favorites):
         # Güvenli kimlik: id, imdbID, tmdb_id, key
         fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or str(fav.get("title")).replace(" ", "_")
-        if not fid:
-            fid = f"unknown_{idx}"
+        # --- To Watch Yorumlar
+        fid = fav.get("id") or fav.get("imdbID") or fav.get("tmdb_id") or fav.get("key") or str(fav.get("title")).replace(" ", "_")
+
+        st.markdown("## 💬 Yorum Ekle")
+        new_comment = st.text_area("Yeni Yorum", key=f"add_comment_text_{fid}")
+        if st.button("💭 Yorum Ekle", key=f"add_comment_{fid}"):
+            if new_comment.strip():
+                comments_ref = db.collection("favorites").document(fid).collection("comments")
+                comments_ref.add({
+                    "text": new_comment.strip(),
+                    "watchedBy": "ss",
+                    "date": format_turkish_datetime(datetime.now())
+                })
+                st.success("✅ Yorum eklendi!")
+                st.rerun()
+            else:
+                st.warning("⚠️ Boş yorum eklenemez.")
         imdb_display = (
             f"{float(fav.get('imdbRating', 0) or 0):.1f}"
             if fav.get('imdbRating') not in (None, "", "N/A") and isinstance(fav.get('imdbRating', 0), (int, float))
